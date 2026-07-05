@@ -1,0 +1,245 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  picture   String?
+  role      String   @default("USER") // USER | ADMIN
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  sessions      AuthSession[]
+  subscriptions PlanSubscription[]
+  blueprints    Blueprint[]
+  usageLogs     UsageLog[]
+  auditLogs     AuditLog[]
+  aiRequestLogs AiRequestLog[]
+  codeProjects  CodeProject[]
+  chats         Chat[]
+  aiKeys        UserAiKey[]
+  codeCollaborations CodeProjectCollaborator[]
+  invoices      Invoice[]
+}
+
+model AuthSession {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userAgent String?
+  ipAddress String?
+  revokedAt DateTime?
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+
+  @@index([userId, createdAt])
+  @@index([expiresAt])
+}
+
+model PlanSubscription {
+  id                 String   @id @default(cuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planType           String   @default("FREE") // FREE | PRO | PRO_MAX
+  status             String   @default("ACTIVE") // ACTIVE | EXPIRED | CANCELLED
+  prdQuota           Int      @default(3) // daily quota limit for PRD
+  quotaUsedToday     Int      @default(0)
+  codeQuotaUsedToday Int      @default(0)
+  lastQuotaReset     DateTime @default(now())
+  activeUntil        DateTime?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model Blueprint {
+  id             String             @id @default(cuid())
+  userId         String
+  user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name           String
+  type           String
+  content        String             @db.Text
+  isPublic       Boolean            @default(false)
+  shareToken     String?            @unique
+  shareExpiresAt DateTime?
+  shareViewCount Int                @default(0)
+  folder         String?
+  tagsJson       String             @default("[]")
+  currentVersion Int                @default(1)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  versions       BlueprintVersion[]
+}
+
+model BlueprintVersion {
+  id          String    @id @default(cuid())
+  blueprintId String
+  blueprint   Blueprint @relation(fields: [blueprintId], references: [id], onDelete: Cascade)
+  userId      String
+  version     Int
+  name        String
+  content     String    @db.Text
+  source      String    @default("MANUAL") // GENERATE | MANUAL_EDIT | AI_REVISE | RESTORE
+  createdAt   DateTime  @default(now())
+}
+
+model CodeProject {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  template     String   @default("react")
+  mode         String   @default("standard")
+  filesJson    String   @db.Text
+  messagesJson String   @db.Text
+  isPublic     Boolean  @default(false)
+  shareToken   String?  @unique
+  shareExpiresAt DateTime?
+  shareViewCount Int     @default(0)
+  shareAllowDownload Boolean @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  versions     CodeProjectVersion[]
+  collaborators CodeProjectCollaborator[]
+}
+
+model CodeProjectCollaborator {
+  id            String      @id @default(cuid())
+  codeProjectId String
+  codeProject   CodeProject @relation(fields: [codeProjectId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role          String      @default("VIEWER") // VIEWER | EDITOR
+  createdAt     DateTime    @default(now())
+
+  @@unique([codeProjectId, userId])
+  @@index([userId])
+}
+
+model CodeProjectVersion {
+  id            String      @id @default(cuid())
+  codeProjectId String
+  codeProject   CodeProject @relation(fields: [codeProjectId], references: [id], onDelete: Cascade)
+  label         String      @default("Snapshot")
+  filesJson     String      @db.Text
+  createdAt     DateTime    @default(now())
+
+  @@index([codeProjectId, createdAt])
+}
+
+model UserAiKey {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label     String   @default("Model Saya")
+  provider  String   @default("openai") // openai | openrouter | groq | custom | ...
+  baseUrl   String
+  apiKey    String   @db.Text // encrypted (AES-256-GCM)
+  model     String
+  usageCount Int     @default(0)
+  lastUsedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Chat {
+  id        String        @id @default(cuid())
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String        @default("Percakapan Baru")
+  mode      String        @default("standard") // standard | max
+  aiKeyId   String?       // BYOK user AI key ID
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  messages  ChatMessage[]
+
+  @@index([userId, updatedAt])
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  chatId    String
+  chat      Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  role      String // user | assistant
+  content   String   @db.Text
+  mode      String? // mode used for assistant replies
+  createdAt DateTime @default(now())
+
+  @@index([chatId, createdAt])
+}
+
+model UsageLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action    String
+  details   String?  @db.Text
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  details   String?  @db.Text
+  ipAddress String?
+  createdAt DateTime @default(now())
+}
+
+model AiRequestLog {
+  id               String   @id @default(cuid())
+  userId           String?
+  user             User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  modelUsed        String
+  promptTokens     Int?
+  completionTokens Int?
+  durationMs       Int?
+  success          Boolean  @default(true)
+  errorMessage     String?  @db.Text
+  createdAt        DateTime @default(now())
+}
+
+model AdminAiKey {
+  id             String   @id @default(cuid())
+  provider       String   @default("openai") // openai | anthropic | openrouter | groq | together | custom
+  label          String   @default("Admin Key")
+  baseUrl        String
+  apiKey         String   @db.Text // encrypted (AES-256-GCM)
+  model          String
+  isActive       Boolean  @default(true)
+  totalRequests  Int      @default(0)
+  totalTokens    Int      @default(0)
+  lastUsedAt     DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([isActive])
+}
+
+model Invoice {
+  id            String   @id @default(cuid())
+  invoiceNumber String   @unique
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planType      String   // PRO | PRO_MAX
+  amount        Float
+  status        String   @default("PAID") // PAID | UNPAID | PENDING
+  issuedAt      DateTime @default(now())
+  paidAt        DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId])
+}
+

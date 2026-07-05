@@ -1,0 +1,16 @@
+{
+  "name": "AriseHash — Bangun Aplikasi dengan AI",
+  "short_name": "AriseHash",
+  "description": "Ubah ide jadi aplikasi cukup dengan ngobrol. Asisten AI untuk membuat rencana proyek dan kode.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f4f4f5",
+  "theme_color": "#18181b",
+  "lang": "id",
+  "icons": [
+    { "src": "/logo.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/logo.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
