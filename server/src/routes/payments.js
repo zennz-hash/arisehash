@@ -93,6 +93,37 @@ router.get('/pakasir/status', requireAuth, async (req, res, next) => {
   }
 })
 
+router.post('/pakasir/sandbox/complete', requireAuth, async (req, res, next) => {
+  try {
+    if (!isPakasirSandboxMode()) {
+      throw new AppError('Simulasi pembayaran hanya tersedia di mode sandbox.', 403)
+    }
+
+    const orderId = String(req.body?.orderId || req.body?.order_id || '').trim()
+    const amount = extractPakasirAmount(req.body)
+    if (!orderId || !amount) throw new AppError('orderId dan amount wajib diisi.', 400)
+
+    const { userId, planType } = parsePakasirOrder({ order_id: orderId })
+    if (userId !== req.user.id) throw new AppError('Order pembayaran tidak cocok dengan user saat ini.', 403)
+    if (!planType || !PAKASIR_PLANS[planType]) throw new AppError('Plan pembayaran tidak valid.', 400)
+
+    await verifyPakasirTransaction({ amount, orderId, allowPending: true })
+    const result = await activatePaidPlan({ userId, planType, amount, orderId, ipAddress: req.ip })
+
+    res.json({
+      ok: true,
+      paid: true,
+      status: 'sandbox_paid',
+      duplicate: result.duplicate,
+      planType,
+      bonusCredits: result.bonusCredits,
+      subscriptionId: result.subscriptionId
+    })
+  } catch (err) {
+    next(err)
+  }
+})
+
 router.post('/pakasir/webhook', async (req, res, next) => {
   try {
     const payload = { ...(req.query || {}), ...(req.body || {}) }

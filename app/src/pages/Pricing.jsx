@@ -70,6 +70,7 @@ export default function Pricing() {
   const [checkout, setCheckout] = useState(null)
   const [busyPlan, setBusyPlan] = useState(null)
   const [checking, setChecking] = useState(false)
+  const [simulating, setSimulating] = useState(false)
 
   const startCheckout = async (plan) => {
     if (!user) {
@@ -113,6 +114,25 @@ export default function Pricing() {
       if (!silent) addToast(err.message, 'error')
     } finally {
       setChecking(false)
+    }
+  }
+
+  const completeSandboxPayment = async () => {
+    if (!checkout || !checkout.sandbox || checkout.paid || simulating) return
+    try {
+      setSimulating(true)
+      const result = await api.completePakasirSandbox({ orderId: checkout.orderId, amount: checkout.amount })
+      setCheckout((prev) => prev ? {
+        ...prev,
+        paid: true,
+        planType: result.planType || prev.planType,
+        bonusCredits: result.bonusCredits ?? prev.bonusCredits
+      } : prev)
+      addToast('Sandbox paid berhasil. Langganan dan bonus credit aktif.', 'success', 5000)
+    } catch (err) {
+      addToast(err.message, 'error')
+    } finally {
+      setSimulating(false)
     }
   }
 
@@ -293,6 +313,12 @@ export default function Pricing() {
                   {checking ? <LoaderCircle size={16} className="spin" /> : <RefreshCw size={16} />}
                   {checkout.paid ? 'Plan aktif' : 'Cek pembayaran'}
                 </button>
+                {checkout.sandbox && !checkout.paid && (
+                  <button className="pakasir-sandbox-btn" onClick={completeSandboxPayment} disabled={simulating}>
+                    {simulating ? <LoaderCircle size={16} className="spin" /> : <Check size={16} />}
+                    Simulasikan paid sandbox
+                  </button>
+                )}
                 <a className="pill" href={checkout.paymentUrl} target="_blank" rel="noreferrer" style={{ justifyContent: 'center' }}>
                   Buka tab baru <span className="pill-ic"><ExternalLink size={15} /></span>
                 </a>
@@ -300,7 +326,7 @@ export default function Pricing() {
                   Ke dashboard <span className="pill-ic"><ArrowUpRight size={15} /></span>
                 </Link>
                 <p className="text-muted" style={{ fontSize: 12.5, lineHeight: 1.55 }}>
-                  Setelah QRIS dibayar, sistem mengecek status otomatis. Jika belum berubah, tekan cek pembayaran.
+                  Setelah QRIS dibayar, sistem mengecek status otomatis. Pada sandbox, gunakan simulasi paid untuk menguji aktivasi plan.
                 </p>
               </aside>
             </div>
