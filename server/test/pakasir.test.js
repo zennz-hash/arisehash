@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 
 import {
   buildPakasirStatusUrl,
+  buildPakasirPaymentUrl,
   extractPakasirAmount,
   getPakasirStatusInfo,
   normalizePlanType,
@@ -70,8 +71,23 @@ test('builds Pakasir transaction-status URL', () => {
   assert.equal(url.searchParams.get('api_key'), 'secret')
 })
 
+test('builds Pakasir payment URL', () => {
+  const url = buildPakasirPaymentUrl({
+    slug: 'arisexhash',
+    amount: 20000,
+    orderId: 'PRO_user123_1',
+    redirectUrl: 'https://www.arisexhash.xyz/app/upgrade'
+  })
+
+  assert.equal(url.origin, 'https://app.pakasir.com')
+  assert.equal(url.pathname, '/pay/arisexhash/20000')
+  assert.equal(url.searchParams.get('order_id'), 'PRO_user123_1')
+  assert.equal(url.searchParams.get('redirect'), 'https://www.arisexhash.xyz/app/upgrade')
+})
+
 test('detects paid Pakasir verification responses', () => {
   assert.deepEqual(getPakasirStatusInfo({ data: { status: 'paid' } }), { status: 'paid', paid: true })
   assert.deepEqual(getPakasirStatusInfo({ data: { payment_status: 'pending' } }), { status: 'pending', paid: false })
   assert.deepEqual(getPakasirStatusInfo({ data: { paid_at: '2026-07-05T00:00:00Z' } }), { status: null, paid: true })
+  assert.deepEqual(getPakasirStatusInfo({ transaction: { completed_at: '2026-07-05T00:00:00Z' } }), { status: null, paid: true })
 })

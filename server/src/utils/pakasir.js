@@ -1,6 +1,18 @@
 export const PAKASIR_API_BASE = 'https://app.pakasir.com/api'
+export const PAKASIR_PAY_BASE = 'https://app.pakasir.com/pay'
 
 export const PAKASIR_PLAN_TYPES = new Set(['PRO', 'PRO_MAX'])
+
+export const PAKASIR_PLANS = {
+  PRO: {
+    name: 'Starter',
+    amount: 20_000
+  },
+  PRO_MAX: {
+    name: 'Pro Max',
+    amount: 75_000
+  }
+}
 
 const PAID_STATUSES = new Set([
   'paid',
@@ -91,6 +103,13 @@ export function buildPakasirStatusUrl({ slug, apiKey, amount, orderId }) {
   return url
 }
 
+export function buildPakasirPaymentUrl({ slug, amount, orderId, redirectUrl }) {
+  const url = new URL(`${PAKASIR_PAY_BASE}/${encodeURIComponent(slug)}/${encodeURIComponent(String(amount))}`)
+  url.searchParams.set('order_id', orderId)
+  if (redirectUrl) url.searchParams.set('redirect', redirectUrl)
+  return url
+}
+
 export function getPakasirStatusInfo(responseJson) {
   const data = responseJson?.data ?? responseJson
   const candidates = [
@@ -108,10 +127,20 @@ export function getPakasirStatusInfo(responseJson) {
 
   const status = candidates.find((value) => typeof value === 'string' && value.trim())?.trim() || null
   const normalized = status?.toLowerCase() || null
-  const hasPaidTimestamp = Boolean(data?.paid_at || data?.paidAt || data?.payment?.paid_at || data?.transaction?.paid_at)
+  const hasPaidTimestamp = Boolean(
+    data?.paid_at ||
+    data?.paidAt ||
+    data?.completed_at ||
+    data?.settlement_at ||
+    data?.payment?.paid_at ||
+    data?.transaction?.paid_at ||
+    data?.transaction?.completed_at ||
+    data?.transaction?.settlement_at
+  )
+  const settled = data?.settled === true || data?.transaction?.settled === true
 
   return {
     status,
-    paid: hasPaidTimestamp || (normalized ? PAID_STATUSES.has(normalized) : false)
+    paid: settled || hasPaidTimestamp || (normalized ? PAID_STATUSES.has(normalized) : false)
   }
 }

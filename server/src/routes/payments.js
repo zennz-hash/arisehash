@@ -1,14 +1,18 @@
 import { Router } from 'express'
 
 import { prisma } from '../db.js'
+import { requireAuth } from '../auth.js'
 import { AppError } from '../middleware/errorHandler.js'
 import { fetchWithTimeout } from '../utils/fetch.js'
 import { getQuotaLimit } from '../utils/quota.js'
 import {
   buildPakasirStatusUrl,
+  buildPakasirPaymentUrl,
   extractPakasirAmount,
   getPakasirStatusInfo,
-  parsePakasirOrder
+  PAKASIR_PLANS,
+  parsePakasirOrder,
+  normalizePlanType
 } from '../utils/pakasir.js'
 
 const router = Router()
@@ -19,6 +23,62 @@ router.get('/pakasir/webhook', (req, res) => {
     service: 'pakasir-webhook',
     configured: Boolean(process.env.PAKASIR_SLUG && process.env.PAKASIR_API_KEY)
   })
+})
+
+router.post('/pakasir/checkout', requireAuth, async (req, res, next) => {
+  try {
+    const planType = normalizePlanType(req.body?.planType)
+    const plan = planType ? PAKASIR_PLANS[planType] : null
+    if (!plan) throw new AppError('Plan pembayaran tidak valid.', 400)
+
+    const slug = process.env.PAKASIR_SLUG
+    if (!slug) throw new AppError('Slug Pakasir belum dikonfigurasi di server.', 500)
+
+    const orderId = `${planType}_${req.user.id}_${Date.now()}`
+    const redirectUrl = `${getClientOrigin(req)}/app/upgrade?order_id=${encodeURIComponent(orderId)}`
+    const paymentUrl = buildPakasirPaymentUrl({
+      slug,
+      amount: plan.amount,
+      orderId,
+      redirectUrl
+    }).toString()
+
+    await createPakasirTransaction({ slug, amount: plan.amount, orderId })
+
+    res.json({
+      orderId,
+      planType,
+      planName: plan.name,
+      amount: plan.amount,
+      paymentUrl,
+      statusUrl: `/api/payment/pakasir/status?order_id=${encodeURIComponent(orderId)}&amount=${plan.amount}`
+    })
+  } catch (err) {
+    next(err)
+  }
+})
+
+router.get('/pakasir/status', requireAuth, async (req, res, next) => {
+  try {
+    const orderId = String(req.query.order_id || req.query.orderId || '').trim()
+    const amount = extractPakasirAmount(req.query)
+    if (!orderId || !amount) throw new AppError('order_id dan amount wajib diisi.', 400)
+
+    const { userId, planType } = parsePakasirOrder({ order_id: orderId })
+    if (userId !== req.user.id) throw new AppError('Order pembayaran tidak cocok dengan user saat ini.', 403)
+    if (!planType || !PAKASIR_PLANS[planType]) throw new AppError('Plan pembayaran tidak valid.', 400)
+
+    const verificationJson = await verifyPakasirTransaction({ amount, orderId })
+    const statusInfo = getPakasirStatusInfo(verificationJson)
+    if (!statusInfo.paid) {
+      return res.json({ ok: true, paid: false, status: statusInfo.status || 'PENDING' })
+    }
+
+    const result = await activatePaidPlan({ userId, planType, amount, orderId, ipAddress: req.ip })
+    res.json({ ok: true, paid: true, status: statusInfo.status || 'PAID', duplicate: result.duplicate })
+  } catch (err) {
+    next(err)
+  }
 })
 
 router.post('/pakasir/webhook', async (req, res, next) => {
@@ -34,19 +94,7 @@ router.post('/pakasir/webhook', async (req, res, next) => {
       throw new AppError('order_id Pakasir harus memakai format PRO_<USER_ID>_<timestamp> atau PRO_MAX_<USER_ID>_<timestamp>.', 400)
     }
 
-    const slug = process.env.PAKASIR_SLUG
-    const apiKey = process.env.PAKASIR_API_KEY
-    if (!slug || !apiKey) {
-      throw new AppError('Konfigurasi Pakasir belum lengkap di server.', 500)
-    }
-
-    const verificationUrl = buildPakasirStatusUrl({ slug, apiKey, amount, orderId })
-    const verified = await fetchWithTimeout(verificationUrl, { headers: { Accept: 'application/json' } }, { timeoutMs: 12_000 })
-    const verificationJson = await readJsonSafely(verified)
-
-    if (!verified.ok) {
-      throw new AppError(verificationJson?.message || 'Transaksi tidak ditemukan di Pakasir.', 400)
-    }
+    const verificationJson = await verifyPakasirTransaction({ amount, orderId })
 
     const statusInfo = getPakasirStatusInfo(verificationJson)
     if (!statusInfo.paid) {
@@ -63,6 +111,45 @@ router.post('/pakasir/webhook', async (req, res, next) => {
     next(err)
   }
 })
+
+function getClientOrigin(req) {
+  const origin = process.env.CLIENT_ORIGIN
+    ?.split(',')
+    .map((value) => value.trim())
+    .find((value) => value && value !== '*')
+  if (origin) return origin
+  const proto = req.headers['x-forwarded-proto'] || req.protocol || 'https'
+  const host = req.headers['x-forwarded-host'] || req.headers.host
+  return host ? `${proto}://${host}` : 'https://arisehash.vercel.app'
+}
+
+async function createPakasirTransaction({ slug, amount, orderId }) {
+  const response = await fetchWithTimeout(`${process.env.PAKASIR_API_BASE || 'https://app.pakasir.com/api'}/transactions`, {
+    method: 'POST',
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ project: slug, amount, order_id: orderId })
+  }, { timeoutMs: 12_000 })
+  const json = await readJsonSafely(response)
+  if (!response.ok) throw new AppError(json?.message || 'Gagal membuat transaksi Pakasir.', 502)
+  return json
+}
+
+async function verifyPakasirTransaction({ amount, orderId }) {
+  const slug = process.env.PAKASIR_SLUG
+  const apiKey = process.env.PAKASIR_API_KEY
+  if (!slug || !apiKey) {
+    throw new AppError('Konfigurasi Pakasir belum lengkap di server.', 500)
+  }
+
+  const verificationUrl = buildPakasirStatusUrl({ slug, apiKey, amount, orderId })
+  const verified = await fetchWithTimeout(verificationUrl, { headers: { Accept: 'application/json' } }, { timeoutMs: 12_000 })
+  const verificationJson = await readJsonSafely(verified)
+
+  if (!verified.ok) {
+    throw new AppError(verificationJson?.message || 'Transaksi tidak ditemukan di Pakasir.', 400)
+  }
+  return verificationJson
+}
 
 async function readJsonSafely(response) {
   const text = await response.text()

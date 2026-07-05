@@ -107,6 +107,8 @@ export const api = {
   // Quotas & Plan Subscription
   quota: () => req('/api/quota'),
   usage: () => req('/api/quota/usage'),
+  createPakasirCheckout: (planType) => req('/api/payment/pakasir/checkout', { method: 'POST', body: { planType } }),
+  pakasirStatus: ({ orderId, amount }) => req(`/api/payment/pakasir/status?order_id=${encodeURIComponent(orderId)}&amount=${encodeURIComponent(amount)}`),
 
   // Chat (Claude-like assistant)
   models: () => req('/api/models'),
