@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Check, ArrowUpRight, Zap, LoaderCircle, ExternalLink, RefreshCw, X } from 'lucide-react'
+import { Check, ArrowUpRight, Zap, LoaderCircle, ExternalLink, RefreshCw, X, Gift, Crown, ShieldCheck, Sparkles } from 'lucide-react'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useToast } from '../context/ToastContext.jsx'
 import SEOHead from '../components/SEOHead.jsx'
@@ -71,6 +71,22 @@ export default function Pricing() {
   const [busyPlan, setBusyPlan] = useState(null)
   const [checking, setChecking] = useState(false)
   const [simulating, setSimulating] = useState(false)
+  const [quota, setQuota] = useState(null)
+  const [managingPlan, setManagingPlan] = useState(false)
+  const checkoutPlanLabel = checkout ? planLabel(checkout) : ''
+  const checkoutBenefits = checkout ? successBenefits(checkout) : []
+  const currentPlanType = (user?.role === 'ADMIN' ? 'ADMIN' : quota?.planType || 'FREE').toUpperCase()
+  const isPaidPlan = ['PRO', 'PRO_MAX'].includes(currentPlanType)
+
+  const loadQuota = async () => {
+    if (!user) {
+      setQuota(null)
+      return null
+    }
+    const data = await api.quota()
+    setQuota(data)
+    return data
+  }
 
   const startCheckout = async (plan) => {
     if (!user) {
@@ -78,7 +94,12 @@ export default function Pricing() {
       return
     }
     if (plan.planType === 'FREE') {
-      navigate('/app')
+      if (isPaidPlan) await changeToFreePlan()
+      else navigate('/app')
+      return
+    }
+    if (currentPlanType === plan.planType) {
+      addToast('Plan ini sudah aktif.', 'info')
       return
     }
 
@@ -106,6 +127,7 @@ export default function Pricing() {
           planType: result.planType || prev.planType,
           bonusCredits: result.bonusCredits ?? prev.bonusCredits
         } : prev)
+        await loadQuota().catch(() => {})
         addToast('Pembayaran berhasil. Paket kamu sudah aktif.', 'success', 5000)
         return
       }
@@ -128,6 +150,7 @@ export default function Pricing() {
         planType: result.planType || prev.planType,
         bonusCredits: result.bonusCredits ?? prev.bonusCredits
       } : prev)
+      await loadQuota().catch(() => {})
       addToast('Sandbox paid berhasil. Langganan dan bonus credit aktif.', 'success', 5000)
     } catch (err) {
       addToast(err.message, 'error')
@@ -137,10 +160,53 @@ export default function Pricing() {
   }
 
   useEffect(() => {
+    loadQuota().catch(() => {})
+  }, [user?.id])
+
+  useEffect(() => {
     if (!checkout || checkout.paid) return undefined
     const timer = setInterval(() => { checkPayment(true) }, 8000)
     return () => clearInterval(timer)
   }, [checkout?.orderId, checkout?.paid])
+
+  const changeToFreePlan = async () => {
+    if (!user || managingPlan) return
+    if (!window.confirm('Ganti plan ke Free sekarang? Kuota premium dan bonus kredit aktif akan dihentikan.')) return
+    try {
+      setManagingPlan(true)
+      await api.changeToFreePlan()
+      await loadQuota()
+      addToast('Plan berhasil diganti ke Free.', 'success')
+    } catch (err) {
+      addToast(err.message, 'error')
+    } finally {
+      setManagingPlan(false)
+    }
+  }
+
+  const cancelPlan = async () => {
+    if (!user || managingPlan) return
+    if (!window.confirm('Batalkan plan berbayar dan kembali ke Free sekarang?')) return
+    try {
+      setManagingPlan(true)
+      await api.cancelPaidPlan()
+      await loadQuota()
+      addToast('Plan berbayar dibatalkan. Akun kembali ke Free.', 'success')
+    } catch (err) {
+      addToast(err.message, 'error')
+    } finally {
+      setManagingPlan(false)
+    }
+  }
+
+  const buttonLabelFor = (plan) => {
+    if (busyPlan === plan.planType) return 'Menyiapkan...'
+    if (plan.planType === currentPlanType) return 'Plan aktif'
+    if (plan.planType === 'FREE' && isPaidPlan) return 'Ganti ke Free'
+    if (plan.planType === 'PRO' && currentPlanType === 'PRO_MAX') return 'Ganti ke Pro'
+    if (plan.planType === 'PRO_MAX' && currentPlanType === 'PRO') return 'Upgrade ke Pro Max'
+    return plan.cta
+  }
 
   return (
     <div className="container section">
@@ -156,6 +222,35 @@ export default function Pricing() {
         Tidak ada biaya tersembunyi. Coba dulu tanpa bayar, lalu naik paket kapan saja
         kalau kebutuhanmu bertambah. Batas pemakaian disegarkan sesuai siklus masing-masing paket.
       </motion.p>
+
+      {user && (
+        <motion.section {...fadeInView(0.13)} className="plan-manager">
+          <div className="plan-manager-main">
+            <span className="plan-manager-icon"><Crown size={18} /></span>
+            <div>
+              <span className="eyebrow">Plan aktif</span>
+              <h2 className="display">{displayPlanName(currentPlanType)}</h2>
+              <p className="text-muted">
+                {quota ? `${Math.max(0, quota.remaining?.code ?? 0)} kredit tersisa hari ini${quota.bonusCodeCredits ? ` · bonus +${quota.bonusCodeCredits}` : ''}` : 'Memuat kuota...'}
+              </p>
+            </div>
+          </div>
+          <div className="plan-manager-actions">
+            {isPaidPlan ? (
+              <>
+                <button className="pill" onClick={changeToFreePlan} disabled={managingPlan}>
+                  Ganti ke Free
+                </button>
+                <button className="pill plan-danger" onClick={cancelPlan} disabled={managingPlan}>
+                  Batalkan plan
+                </button>
+              </>
+            ) : (
+              <span className="plan-manager-note">Pilih Starter atau Pro Max untuk upgrade.</span>
+            )}
+          </div>
+        </motion.section>
+      )}
 
       <style>{`
         @keyframes pulseGlow {
@@ -235,11 +330,11 @@ export default function Pricing() {
               <button
                 type="button"
                 onClick={() => startCheckout(p)}
-                disabled={busyPlan === p.planType}
+                disabled={busyPlan === p.planType || currentPlanType === p.planType || managingPlan}
                 className={p.highlight ? 'pill' : 'pill pill-indigo'}
                 style={{ width: '100%', marginTop: 'auto', justifyContent: 'center', ...(p.highlight ? { background: '#2a2a30', borderColor: '#2a2a30', color: '#f5f5f6' } : {}) }}
               >
-                {busyPlan === p.planType ? 'Menyiapkan...' : p.cta}
+                {buttonLabelFor(p)}
                 <span className="pill-ic" style={p.highlight ? { background: '#18181b', color: '#f4f4f5' } : {}}>
                   {busyPlan === p.planType ? <LoaderCircle size={16} className="spin" /> : <ArrowUpRight size={16} strokeWidth={2.6} />}
                 </span>
@@ -254,53 +349,78 @@ export default function Pricing() {
       </motion.p>
 
       {checkout && (
-        <div className="modal-overlay" style={{ zIndex: 100000, placeItems: 'center', padding: 16 }}>
+        <div className="modal-overlay pakasir-overlay">
           <section
-            className="modal-card pakasir-modal"
+            className={`modal-card pakasir-modal ${checkout.paid ? 'is-paid' : ''}`}
             role="dialog"
             aria-modal="true"
             aria-labelledby="pakasir-checkout-title"
           >
-            <div className="modal-head">
+            <div className="modal-head pakasir-modal-head">
               <div style={{ minWidth: 0 }}>
-                <h2 id="pakasir-checkout-title" className="display" style={{ fontSize: 20 }}>Bayar {checkout.planName}</h2>
-                <p className="text-muted" style={{ fontSize: 13, marginTop: 4, wordBreak: 'break-all' }}>
-                  Order {checkout.orderId}{checkout.sandbox ? ' · Sandbox' : ''}
-                </p>
+                <div className="pakasir-kicker">
+                  <span>{checkout.sandbox ? 'Sandbox checkout' : 'Secure checkout'}</span>
+                  <span>{formatRupiah(checkout.amount)}</span>
+                </div>
+                <h2 id="pakasir-checkout-title" className="display pakasir-title">
+                  {checkout.paid ? `Congrats, you have got ${checkoutPlanLabel}` : `Bayar ${checkout.planName}`}
+                </h2>
+                <p className="text-muted pakasir-order">Order {checkout.orderId}</p>
               </div>
               <button className="dash-hist-del" onClick={() => setCheckout(null)} aria-label="Tutup pembayaran">
                 <X size={16} />
               </button>
             </div>
             <div className="modal-body pakasir-modal-body">
-              <div className="pakasir-frame-wrap">
-                <iframe
-                  title="Pembayaran Pakasir QRIS"
-                  src={checkout.paymentUrl}
-                  className="pakasir-frame"
-                  allow="payment *"
-                />
-              </div>
-              <aside className="pakasir-side">
-                {checkout.paid ? (
-                  <div className="pakasir-congrats" role="status">
-                    <span className="pakasir-congrats-ic"><Check size={22} /></span>
-                    <span className="eyebrow" style={{ color: 'var(--accent-2)' }}>Congrats</span>
-                    <h3 className="display" style={{ fontSize: 24, marginTop: 6 }}>Langganan aktif</h3>
-                    <p className="text-muted" style={{ fontSize: 13.5, lineHeight: 1.55, marginTop: 8 }}>
-                      Paket {checkout.planName} sudah aktif. Bonus {checkout.bonusCredits || 0} kredit AI sudah masuk ke saldo hari ini.
-                    </p>
+              {checkout.paid ? (
+                <div className="pakasir-success-stage">
+                  <div className="pakasir-success-mark" aria-hidden="true">
+                    <span className="pakasir-success-ring" />
+                    <span className="pakasir-success-check"><Check size={34} strokeWidth={3} /></span>
                   </div>
-                ) : null}
-                <div className="qris-box" style={{ margin: 0 }}>
+                  <span className="pakasir-success-chip">Subscription unlocked</span>
+                  <h3 className="display pakasir-success-title">Congrats, you have got {checkoutPlanLabel}</h3>
+                  <p className="pakasir-success-copy">
+                    Free credit +{checkout.bonusCredits || 0} sudah ditambahkan dan benefit premium sudah aktif untuk akun ini.
+                  </p>
+                  <div className="pakasir-benefit-grid">
+                    {checkoutBenefits.map(({ Icon, title, desc }, index) => (
+                      <div className="pakasir-benefit-card" style={{ animationDelay: `${index * 90}ms` }} key={title}>
+                        <span className="pakasir-benefit-ic"><Icon size={18} /></span>
+                        <div>
+                          <strong>{title}</strong>
+                          <span>{desc}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="pakasir-frame-wrap">
+                  <div className="pakasir-frame-top">
+                    <span>QRIS payment</span>
+                    <span>{checkout.sandbox ? 'Sandbox' : 'Live'}</span>
+                  </div>
+                  <iframe
+                    title="Pembayaran Pakasir QRIS"
+                    src={checkout.paymentUrl}
+                    className="pakasir-frame"
+                    allow="payment *"
+                  />
+                </div>
+              )}
+              <aside className="pakasir-side">
+                <div className={`qris-box pakasir-summary ${checkout.paid ? 'is-paid' : ''}`} style={{ margin: 0 }}>
                   <div className="qris-head">
-                    <Zap size={16} />
-                    <strong>QRIS Pakasir</strong>
+                    {checkout.paid ? <Crown size={16} /> : <Zap size={16} />}
+                    <strong>{checkout.paid ? `${checkoutPlanLabel} aktif` : 'QRIS Pakasir'}</strong>
                   </div>
                   <div className="qris-amount">
-                    <span className="display" style={{ fontSize: 26 }}>{formatRupiah(checkout.amount)}</span>
+                    <span className="display" style={{ fontSize: 26 }}>
+                      {checkout.paid ? `+${checkout.bonusCredits || 0}` : formatRupiah(checkout.amount)}
+                    </span>
                     <span className="text-muted" style={{ fontSize: 12 }}>
-                      Bonus {checkout.bonusCredits || 0} kredit AI{checkout.sandbox ? ' · Mode sandbox' : ''}
+                      {checkout.paid ? 'Free credit claimed' : `Bonus ${checkout.bonusCredits || 0} kredit AI${checkout.sandbox ? ' · Mode sandbox' : ''}`}
                     </span>
                   </div>
                 </div>
@@ -325,7 +445,7 @@ export default function Pricing() {
                 <Link className="pill pill-indigo" to={to} onClick={() => checkout.paid && setCheckout(null)} style={{ justifyContent: 'center' }}>
                   Ke dashboard <span className="pill-ic"><ArrowUpRight size={15} /></span>
                 </Link>
-                <p className="text-muted" style={{ fontSize: 12.5, lineHeight: 1.55 }}>
+                <p className="text-muted pakasir-help">
                   Setelah QRIS dibayar, sistem mengecek status otomatis. Pada sandbox, gunakan simulasi paid untuk menguji aktivasi plan.
                 </p>
               </aside>
@@ -335,6 +455,47 @@ export default function Pricing() {
       )}
     </div>
   )
+}
+
+function planLabel(checkout) {
+  const type = String(checkout?.planType || '').toUpperCase()
+  if (type === 'PRO_MAX') return 'Pro Max'
+  if (type === 'PRO') return 'Pro'
+  return checkout?.planName || 'Pro'
+}
+
+function displayPlanName(planType) {
+  const type = String(planType || '').toUpperCase()
+  if (type === 'PRO_MAX') return 'Pro Max'
+  if (type === 'PRO') return 'Pro'
+  if (type === 'ADMIN') return 'Admin'
+  return 'Free'
+}
+
+function successBenefits(checkout) {
+  const label = planLabel(checkout)
+  return [
+    {
+      Icon: Gift,
+      title: `Free credit +${checkout.bonusCredits || 0}`,
+      desc: 'Bonus langsung masuk ke saldo kredit AI.'
+    },
+    {
+      Icon: Crown,
+      title: `${label} unlocked`,
+      desc: 'Paket premium aktif untuk workspace kamu.'
+    },
+    {
+      Icon: ShieldCheck,
+      title: 'Akses premium',
+      desc: 'Model dan kuota premium siap dipakai.'
+    },
+    {
+      Icon: Sparkles,
+      title: 'Ready to build',
+      desc: 'Lanjut buat project dan chat AI sekarang.'
+    }
+  ]
 }
 
 function formatRupiah(value) {

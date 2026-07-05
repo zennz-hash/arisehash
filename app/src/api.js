@@ -110,6 +110,8 @@ export const api = {
   createPakasirCheckout: (planType) => req('/api/payment/pakasir/checkout', { method: 'POST', body: { planType } }),
   pakasirStatus: ({ orderId, amount }) => req(`/api/payment/pakasir/status?order_id=${encodeURIComponent(orderId)}&amount=${encodeURIComponent(amount)}`),
   completePakasirSandbox: ({ orderId, amount }) => req('/api/payment/pakasir/sandbox/complete', { method: 'POST', body: { orderId, amount } }),
+  changeToFreePlan: () => req('/api/payment/plan/free', { method: 'POST' }),
+  cancelPaidPlan: () => req('/api/payment/plan/cancel', { method: 'POST' }),
 
   // Chat (Claude-like assistant)
   models: () => req('/api/models'),

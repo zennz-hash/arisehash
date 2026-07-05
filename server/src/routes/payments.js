@@ -26,6 +26,32 @@ router.get('/pakasir/webhook', (req, res) => {
   })
 })
 
+router.post('/plan/free', requireAuth, async (req, res, next) => {
+  try {
+    const result = await switchUserToFreePlan({
+      userId: req.user.id,
+      action: 'CHANGE_TO_FREE_PLAN',
+      ipAddress: req.ip
+    })
+    res.json(result)
+  } catch (err) {
+    next(err)
+  }
+})
+
+router.post('/plan/cancel', requireAuth, async (req, res, next) => {
+  try {
+    const result = await switchUserToFreePlan({
+      userId: req.user.id,
+      action: 'CANCEL_PAID_PLAN',
+      ipAddress: req.ip
+    })
+    res.json(result)
+  } catch (err) {
+    next(err)
+  }
+})
+
 router.post('/pakasir/checkout', requireAuth, async (req, res, next) => {
   try {
     const planType = normalizePlanType(req.body?.planType)
@@ -289,6 +315,58 @@ async function activatePaidPlan({ userId, planType, amount, orderId, ipAddress }
     })
 
     return { duplicate: false, subscriptionId: subscription.id, bonusCredits }
+  })
+}
+
+async function switchUserToFreePlan({ userId, action, ipAddress }) {
+  const prdQuota = getQuotaLimit('FREE', 'prd')
+
+  return prisma.$transaction(async (tx) => {
+    const active = await tx.planSubscription.findFirst({
+      where: { userId, status: 'ACTIVE' },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, planType: true }
+    })
+
+    if (active?.planType === 'FREE') {
+      return { ok: true, planType: 'FREE', status: 'ACTIVE', changed: false }
+    }
+
+    await tx.planSubscription.updateMany({
+      where: { userId, status: 'ACTIVE' },
+      data: { status: 'CANCELLED', activeUntil: new Date() }
+    })
+
+    const freeSub = await tx.planSubscription.create({
+      data: {
+        userId,
+        planType: 'FREE',
+        status: 'ACTIVE',
+        prdQuota,
+        bonusCodeCredits: 0,
+        lastQuotaReset: new Date()
+      },
+      select: { id: true, planType: true, status: true }
+    })
+
+    await tx.auditLog.create({
+      data: {
+        userId,
+        action,
+        details: `User changed subscription from ${active?.planType || 'NONE'} to FREE`,
+        ipAddress
+      }
+    })
+
+    await tx.usageLog.create({
+      data: {
+        userId,
+        action,
+        details: `Subscription changed to FREE. Bonus credits reset to 0.`
+      }
+    })
+
+    return { ok: true, ...freeSub, changed: true }
   })
 }
 
