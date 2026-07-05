@@ -68,7 +68,7 @@ router.get('/pakasir/status', requireAuth, async (req, res, next) => {
     if (userId !== req.user.id) throw new AppError('Order pembayaran tidak cocok dengan user saat ini.', 403)
     if (!planType || !PAKASIR_PLANS[planType]) throw new AppError('Plan pembayaran tidak valid.', 400)
 
-    const verificationJson = await verifyPakasirTransaction({ amount, orderId })
+    const verificationJson = await verifyPakasirTransaction({ amount, orderId, allowPending: true })
     const statusInfo = getPakasirStatusInfo(verificationJson)
     if (!statusInfo.paid) {
       return res.json({ ok: true, paid: false, status: statusInfo.status || 'PENDING' })
@@ -134,7 +134,7 @@ async function createPakasirTransaction({ slug, amount, orderId }) {
   return json
 }
 
-async function verifyPakasirTransaction({ amount, orderId }) {
+async function verifyPakasirTransaction({ amount, orderId, allowPending = false }) {
   const slug = process.env.PAKASIR_SLUG
   const apiKey = process.env.PAKASIR_API_KEY
   if (!slug || !apiKey) {
@@ -145,10 +145,19 @@ async function verifyPakasirTransaction({ amount, orderId }) {
   const verified = await fetchWithTimeout(verificationUrl, { headers: { Accept: 'application/json' } }, { timeoutMs: 12_000 })
   const verificationJson = await readJsonSafely(verified)
 
+  if (!verified.ok && allowPending && isPendingPakasirResponse(verificationJson)) {
+    return { data: { status: 'pending' }, message: verificationJson?.message }
+  }
+
   if (!verified.ok) {
     throw new AppError(verificationJson?.message || 'Transaksi tidak ditemukan di Pakasir.', 400)
   }
   return verificationJson
+}
+
+function isPendingPakasirResponse(json) {
+  const message = String(json?.message || '').toLowerCase()
+  return message.includes('dana belum masuk') || message.includes('periksa kembali')
 }
 
 async function readJsonSafely(response) {
