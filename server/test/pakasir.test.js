@@ -6,7 +6,6 @@ import {
   buildPakasirPaymentUrl,
   extractPakasirAmount,
   getPakasirStatusInfo,
-  isPakasirSandboxMode,
   normalizePlanType,
   parsePakasirOrder
 } from '../src/utils/pakasir.js'
@@ -84,23 +83,6 @@ test('builds Pakasir payment URL', () => {
   assert.equal(url.pathname, '/pay/arisexhash/20000')
   assert.equal(url.searchParams.get('order_id'), 'PRO_user123_1')
   assert.equal(url.searchParams.get('redirect'), 'https://www.arisexhash.xyz/app/upgrade')
-})
-
-test('adds sandbox marker to Pakasir payment URL when sandbox mode is enabled', () => {
-  const previous = process.env.PAKASIR_MODE
-  process.env.PAKASIR_MODE = 'sandbox'
-  try {
-    assert.equal(isPakasirSandboxMode(), true)
-    const url = buildPakasirPaymentUrl({
-      slug: 'arisexhash',
-      amount: 20000,
-      orderId: 'PRO_user123_1'
-    })
-    assert.equal(url.searchParams.get('sandbox'), '1')
-  } finally {
-    if (previous === undefined) delete process.env.PAKASIR_MODE
-    else process.env.PAKASIR_MODE = previous
-  }
 })
 
 test('detects paid Pakasir verification responses', () => {

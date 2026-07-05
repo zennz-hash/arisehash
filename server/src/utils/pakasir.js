@@ -109,13 +109,7 @@ export function buildPakasirPaymentUrl({ slug, amount, orderId, redirectUrl }) {
   const url = new URL(`${PAKASIR_PAY_BASE}/${encodeURIComponent(slug)}/${encodeURIComponent(String(amount))}`)
   url.searchParams.set('order_id', orderId)
   if (redirectUrl) url.searchParams.set('redirect', redirectUrl)
-  if (isPakasirSandboxMode()) url.searchParams.set('sandbox', '1')
   return url
-}
-
-export function isPakasirSandboxMode() {
-  const mode = String(process.env.PAKASIR_MODE || process.env.PAKASIR_SANDBOX || '').trim().toLowerCase()
-  return ['1', 'true', 'yes', 'sandbox', 'test'].includes(mode)
 }
 
 export function getPakasirStatusInfo(responseJson) {

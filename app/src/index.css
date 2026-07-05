@@ -1306,21 +1306,6 @@ ul { list-style: none; }
   border-color: var(--accent-line) !important;
   background: linear-gradient(180deg, rgba(124,116,255,.16), rgba(30,30,34,.92)) !important;
 }
-.pakasir-sandbox-btn {
-  width: 100%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 9px;
-  padding: 13px 16px;
-  border-radius: 14px;
-  border: 1.5px solid var(--accent-line);
-  background: var(--accent-soft);
-  color: var(--accent-2);
-  font-weight: 700;
-  font-size: 14px;
-}
-.pakasir-sandbox-btn:disabled { opacity: .75; cursor: wait; }
 .pakasir-help { font-size: 12.5px; line-height: 1.55; }
 .pakasir-success-stage {
   min-height: 560px;

@@ -70,7 +70,6 @@ export default function Pricing() {
   const [checkout, setCheckout] = useState(null)
   const [busyPlan, setBusyPlan] = useState(null)
   const [checking, setChecking] = useState(false)
-  const [simulating, setSimulating] = useState(false)
   const [quota, setQuota] = useState(null)
   const [managingPlan, setManagingPlan] = useState(false)
   const checkoutPlanLabel = checkout ? planLabel(checkout) : ''
@@ -136,26 +135,6 @@ export default function Pricing() {
       if (!silent) addToast(err.message, 'error')
     } finally {
       setChecking(false)
-    }
-  }
-
-  const completeSandboxPayment = async () => {
-    if (!checkout || !checkout.sandbox || checkout.paid || simulating) return
-    try {
-      setSimulating(true)
-      const result = await api.completePakasirSandbox({ orderId: checkout.orderId, amount: checkout.amount })
-      setCheckout((prev) => prev ? {
-        ...prev,
-        paid: true,
-        planType: result.planType || prev.planType,
-        bonusCredits: result.bonusCredits ?? prev.bonusCredits
-      } : prev)
-      await loadQuota().catch(() => {})
-      addToast('Sandbox paid berhasil. Langganan dan bonus credit aktif.', 'success', 5000)
-    } catch (err) {
-      addToast(err.message, 'error')
-    } finally {
-      setSimulating(false)
     }
   }
 
@@ -359,7 +338,7 @@ export default function Pricing() {
             <div className="modal-head pakasir-modal-head">
               <div style={{ minWidth: 0 }}>
                 <div className="pakasir-kicker">
-                  <span>{checkout.sandbox ? 'Sandbox checkout' : 'Secure checkout'}</span>
+                  <span>Secure checkout</span>
                   <span>{formatRupiah(checkout.amount)}</span>
                 </div>
                 <h2 id="pakasir-checkout-title" className="display pakasir-title">
@@ -399,7 +378,7 @@ export default function Pricing() {
                 <div className="pakasir-frame-wrap">
                   <div className="pakasir-frame-top">
                     <span>QRIS payment</span>
-                    <span>{checkout.sandbox ? 'Sandbox' : 'Live'}</span>
+                    <span>Live</span>
                   </div>
                   <iframe
                     title="Pembayaran Pakasir QRIS"
@@ -420,7 +399,7 @@ export default function Pricing() {
                       {checkout.paid ? `+${checkout.bonusCredits || 0}` : formatRupiah(checkout.amount)}
                     </span>
                     <span className="text-muted" style={{ fontSize: 12 }}>
-                      {checkout.paid ? 'Free credit claimed' : `Bonus ${checkout.bonusCredits || 0} kredit AI${checkout.sandbox ? ' · Mode sandbox' : ''}`}
+                      {checkout.paid ? 'Free credit claimed' : `Bonus ${checkout.bonusCredits || 0} kredit AI`}
                     </span>
                   </div>
                 </div>
@@ -433,12 +412,6 @@ export default function Pricing() {
                   {checking ? <LoaderCircle size={16} className="spin" /> : <RefreshCw size={16} />}
                   {checkout.paid ? 'Plan aktif' : 'Cek pembayaran'}
                 </button>
-                {checkout.sandbox && !checkout.paid && (
-                  <button className="pakasir-sandbox-btn" onClick={completeSandboxPayment} disabled={simulating}>
-                    {simulating ? <LoaderCircle size={16} className="spin" /> : <Check size={16} />}
-                    Simulasikan paid sandbox
-                  </button>
-                )}
                 <a className="pill" href={checkout.paymentUrl} target="_blank" rel="noreferrer" style={{ justifyContent: 'center' }}>
                   Buka tab baru <span className="pill-ic"><ExternalLink size={15} /></span>
                 </a>
@@ -446,7 +419,7 @@ export default function Pricing() {
                   Ke dashboard <span className="pill-ic"><ArrowUpRight size={15} /></span>
                 </Link>
                 <p className="text-muted pakasir-help">
-                  Setelah QRIS dibayar, sistem mengecek status otomatis. Pada sandbox, gunakan simulasi paid untuk menguji aktivasi plan.
+                  Setelah QRIS dibayar, sistem mengecek status otomatis. Jika belum berubah, tekan cek pembayaran.
                 </p>
               </aside>
             </div>
