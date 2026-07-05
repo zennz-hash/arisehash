@@ -13,6 +13,7 @@ import chatRoutes from './routes/chat.js'
 import quotaRoutes from './routes/quota.js'
 import adminRoutes from './routes/admin.js'
 import aiKeyRoutes from './routes/aiKeys.js'
+import paymentRoutes from './routes/payments.js'
 import { requireAuth } from './auth.js'
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js'
 import { resolveModels } from './utils/ai.js'
@@ -41,6 +42,7 @@ app.use((req, res, next) => {
   next()
 })
 app.use(express.json({ limit: '15mb' }))
+app.use(express.urlencoded({ extended: false, limit: '1mb' }))
 
 // Rate limiting
 const apiLimiter = rateLimit({ 
@@ -93,6 +95,7 @@ app.use('/api/chat', chatRoutes)
 app.use('/api/quota', quotaRoutes)
 app.use('/api/admin', adminRoutes)
 app.use('/api/ai-keys', aiKeyRoutes)
+app.use('/api/payment', paymentRoutes)
 
 // GET /api/models - standalone endpoint for active AI models (used by dropdowns)
 app.get('/api/models', requireAuth, async (req, res, next) => {
