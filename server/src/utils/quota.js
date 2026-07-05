@@ -12,6 +12,11 @@ const QUOTA_LIMITS = {
   ADMIN: { prd: 1000, code: 50000 }
 }
 
+export const UPGRADE_BONUS_CREDITS = {
+  PRO: 100,
+  PRO_MAX: 400
+}
+
 export function calculateCreditCost(content = '') {
   const charCount = typeof content === 'string' ? content.length : 0
   const cost = Math.max(1, Math.ceil(charCount / 20))
@@ -21,6 +26,16 @@ export function calculateCreditCost(content = '') {
 export function getQuotaLimit(planType, kind) {
   const limits = QUOTA_LIMITS[planType] || QUOTA_LIMITS.FREE
   return limits[kind] || 0
+}
+
+export function getUpgradeBonusCredits(planType) {
+  return UPGRADE_BONUS_CREDITS[planType] || 0
+}
+
+export function getEffectiveQuotaLimit(subscription, kind) {
+  const base = getQuotaLimit(subscription?.planType, kind)
+  if (kind !== 'code') return base
+  return base + Math.max(0, subscription?.bonusCodeCredits || 0)
 }
 
 export function nextResetAt(planType, lastResetDate) {
@@ -97,7 +112,7 @@ export async function claimQuota(userId, kind, amount = 1) {
     return { allowed: false, remaining: 0, limit: 0, planType: 'NONE' }
   }
 
-  const limit = getQuotaLimit(sub.planType, kind)
+  const limit = getEffectiveQuotaLimit(sub, kind)
   const field = kind === 'prd' ? 'quotaUsedToday' : 'codeQuotaUsedToday'
   const usedToday = sub[field]
 

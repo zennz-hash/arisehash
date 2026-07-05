@@ -99,7 +99,12 @@ export default function Pricing() {
       setChecking(true)
       const result = await api.pakasirStatus({ orderId: checkout.orderId, amount: checkout.amount })
       if (result.paid) {
-        setCheckout((prev) => prev ? { ...prev, paid: true } : prev)
+        setCheckout((prev) => prev ? {
+          ...prev,
+          paid: true,
+          planType: result.planType || prev.planType,
+          bonusCredits: result.bonusCredits ?? prev.bonusCredits
+        } : prev)
         addToast('Pembayaran berhasil. Paket kamu sudah aktif.', 'success', 5000)
         return
       }
@@ -239,7 +244,9 @@ export default function Pricing() {
             <div className="modal-head">
               <div style={{ minWidth: 0 }}>
                 <h2 id="pakasir-checkout-title" className="display" style={{ fontSize: 20 }}>Bayar {checkout.planName}</h2>
-                <p className="text-muted" style={{ fontSize: 13, marginTop: 4, wordBreak: 'break-all' }}>Order {checkout.orderId}</p>
+                <p className="text-muted" style={{ fontSize: 13, marginTop: 4, wordBreak: 'break-all' }}>
+                  Order {checkout.orderId}{checkout.sandbox ? ' · Sandbox' : ''}
+                </p>
               </div>
               <button className="dash-hist-del" onClick={() => setCheckout(null)} aria-label="Tutup pembayaran">
                 <X size={16} />
@@ -255,6 +262,16 @@ export default function Pricing() {
                 />
               </div>
               <aside className="pakasir-side">
+                {checkout.paid ? (
+                  <div className="pakasir-congrats" role="status">
+                    <span className="pakasir-congrats-ic"><Check size={22} /></span>
+                    <span className="eyebrow" style={{ color: 'var(--accent-2)' }}>Congrats</span>
+                    <h3 className="display" style={{ fontSize: 24, marginTop: 6 }}>Langganan aktif</h3>
+                    <p className="text-muted" style={{ fontSize: 13.5, lineHeight: 1.55, marginTop: 8 }}>
+                      Paket {checkout.planName} sudah aktif. Bonus {checkout.bonusCredits || 0} kredit AI sudah masuk ke saldo hari ini.
+                    </p>
+                  </div>
+                ) : null}
                 <div className="qris-box" style={{ margin: 0 }}>
                   <div className="qris-head">
                     <Zap size={16} />
@@ -262,7 +279,9 @@ export default function Pricing() {
                   </div>
                   <div className="qris-amount">
                     <span className="display" style={{ fontSize: 26 }}>{formatRupiah(checkout.amount)}</span>
-                    <span className="text-muted" style={{ fontSize: 12 }}>Scan QRIS di panel pembayaran</span>
+                    <span className="text-muted" style={{ fontSize: 12 }}>
+                      Bonus {checkout.bonusCredits || 0} kredit AI{checkout.sandbox ? ' · Mode sandbox' : ''}
+                    </span>
                   </div>
                 </div>
                 {checkout.paid && (

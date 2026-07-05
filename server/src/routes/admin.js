@@ -236,6 +236,7 @@ router.post('/users/:id/subscription', validateParams(), validate(updateSubscrip
         planType,
         status: 'ACTIVE',
         prdQuota: prdLimit,
+        bonusCodeCredits: 0,
         lastQuotaReset: new Date()
       }
     })

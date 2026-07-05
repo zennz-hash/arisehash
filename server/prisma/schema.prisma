@@ -52,6 +52,7 @@ model PlanSubscription {
   planType           String   @default("FREE") // FREE | PRO | PRO_MAX
   status             String   @default("ACTIVE") // ACTIVE | EXPIRED | CANCELLED
   prdQuota           Int      @default(3) // daily quota limit for PRD
+  bonusCodeCredits   Int      @default(0)
   quotaUsedToday     Int      @default(0)
   codeQuotaUsedToday Int      @default(0)
   lastQuotaReset     DateTime @default(now())
@@ -242,4 +243,3 @@ model Invoice {
 
   @@index([userId])
 }
-

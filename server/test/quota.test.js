@@ -2,7 +2,9 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   calculateCreditCost,
+  getEffectiveQuotaLimit,
   getQuotaLimit,
+  getUpgradeBonusCredits,
   nextResetAt,
   tryClaimQuota,
 } from '../src/utils/quota.js'
@@ -64,6 +66,16 @@ test('getQuotaLimit falls back to FREE for unknown plan types', () => {
 test('getQuotaLimit returns 0 for unknown quota kinds', () => {
   assert.equal(getQuotaLimit('FREE', 'unknown'), 0)
   assert.equal(getQuotaLimit('PRO', 'invalid'), 0)
+})
+
+test('upgrade bonus credits are added to effective code quota only', () => {
+  assert.equal(getUpgradeBonusCredits('PRO'), 100)
+  assert.equal(getUpgradeBonusCredits('PRO_MAX'), 400)
+  assert.equal(getUpgradeBonusCredits('FREE'), 0)
+
+  const sub = { planType: 'PRO', bonusCodeCredits: 100 }
+  assert.equal(getEffectiveQuotaLimit(sub, 'code'), 600)
+  assert.equal(getEffectiveQuotaLimit(sub, 'prd'), 5)
 })
 
 /* ── nextResetAt ──────────────────────────────────────────────────────── */

@@ -4,7 +4,7 @@ import { prisma } from '../db.js'
 import { requireAuth } from '../auth.js'
 import { AppError } from '../middleware/errorHandler.js'
 import { fetchWithTimeout } from '../utils/fetch.js'
-import { getQuotaLimit } from '../utils/quota.js'
+import { getQuotaLimit, getUpgradeBonusCredits } from '../utils/quota.js'
 import {
   buildPakasirStatusUrl,
   buildPakasirPaymentUrl,
@@ -12,7 +12,8 @@ import {
   getPakasirStatusInfo,
   PAKASIR_PLANS,
   parsePakasirOrder,
-  normalizePlanType
+  normalizePlanType,
+  isPakasirSandboxMode
 } from '../utils/pakasir.js'
 
 const router = Router()
@@ -43,13 +44,16 @@ router.post('/pakasir/checkout', requireAuth, async (req, res, next) => {
       redirectUrl
     }).toString()
 
-    await createPakasirTransaction({ slug, amount: plan.amount, orderId })
+    const transaction = await createPakasirTransaction({ slug, amount: plan.amount, orderId })
+    const sandbox = Boolean(transaction?.transaction?.is_sandbox || transaction?.data?.is_sandbox || isPakasirSandboxMode())
 
     res.json({
       orderId,
       planType,
       planName: plan.name,
       amount: plan.amount,
+      bonusCredits: plan.bonusCredits,
+      sandbox,
       paymentUrl,
       statusUrl: `/api/payment/pakasir/status?order_id=${encodeURIComponent(orderId)}&amount=${plan.amount}`
     })
@@ -75,7 +79,15 @@ router.get('/pakasir/status', requireAuth, async (req, res, next) => {
     }
 
     const result = await activatePaidPlan({ userId, planType, amount, orderId, ipAddress: req.ip })
-    res.json({ ok: true, paid: true, status: statusInfo.status || 'PAID', duplicate: result.duplicate })
+    res.json({
+      ok: true,
+      paid: true,
+      status: statusInfo.status || 'PAID',
+      duplicate: result.duplicate,
+      planType,
+      bonusCredits: result.bonusCredits,
+      subscriptionId: result.subscriptionId
+    })
   } catch (err) {
     next(err)
   }
@@ -106,7 +118,14 @@ router.post('/pakasir/webhook', async (req, res, next) => {
     }
 
     const result = await activatePaidPlan({ userId, planType, amount, orderId, ipAddress: req.ip })
-    res.json({ ok: true, paid: true, duplicate: result.duplicate, subscriptionId: result.subscriptionId })
+    res.json({
+      ok: true,
+      paid: true,
+      duplicate: result.duplicate,
+      subscriptionId: result.subscriptionId,
+      planType,
+      bonusCredits: result.bonusCredits
+    })
   } catch (err) {
     next(err)
   }
@@ -124,10 +143,13 @@ function getClientOrigin(req) {
 }
 
 async function createPakasirTransaction({ slug, amount, orderId }) {
+  const payload = { project: slug, amount, order_id: orderId }
+  if (isPakasirSandboxMode()) payload.is_sandbox = true
+
   const response = await fetchWithTimeout(`${process.env.PAKASIR_API_BASE || 'https://app.pakasir.com/api'}/transactions`, {
     method: 'POST',
     headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-    body: JSON.stringify({ project: slug, amount, order_id: orderId })
+    body: JSON.stringify(payload)
   }, { timeoutMs: 12_000 })
   const json = await readJsonSafely(response)
   if (!response.ok) throw new AppError(json?.message || 'Gagal membuat transaksi Pakasir.', 502)
@@ -173,6 +195,7 @@ async function activatePaidPlan({ userId, planType, amount, orderId, ipAddress }
   const invoiceNumber = `PAKASIR-${orderId}`
   const activeUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
   const prdQuota = getQuotaLimit(planType, 'prd')
+  const bonusCredits = getUpgradeBonusCredits(planType)
 
   return prisma.$transaction(async (tx) => {
     const user = await tx.user.findUnique({ where: { id: userId }, select: { id: true } })
@@ -183,9 +206,9 @@ async function activatePaidPlan({ userId, planType, amount, orderId, ipAddress }
       const activeSub = await tx.planSubscription.findFirst({
         where: { userId, status: 'ACTIVE' },
         orderBy: { createdAt: 'desc' },
-        select: { id: true }
+        select: { id: true, bonusCodeCredits: true }
       })
-      return { duplicate: true, subscriptionId: activeSub?.id || null }
+      return { duplicate: true, subscriptionId: activeSub?.id || null, bonusCredits: activeSub?.bonusCodeCredits || bonusCredits }
     }
 
     await tx.planSubscription.updateMany({
@@ -199,6 +222,7 @@ async function activatePaidPlan({ userId, planType, amount, orderId, ipAddress }
         planType,
         status: 'ACTIVE',
         prdQuota,
+        bonusCodeCredits: bonusCredits,
         lastQuotaReset: new Date(),
         activeUntil
       },
@@ -220,12 +244,20 @@ async function activatePaidPlan({ userId, planType, amount, orderId, ipAddress }
       data: {
         userId,
         action: 'PAKASIR_WEBHOOK_PAID',
-        details: `Activated ${planType} from Pakasir order ${orderId}`,
+        details: `Activated ${planType} from Pakasir order ${orderId} with ${bonusCredits} bonus code credits`,
         ipAddress
       }
     })
 
-    return { duplicate: false, subscriptionId: subscription.id }
+    await tx.usageLog.create({
+      data: {
+        userId,
+        action: 'CLAIM_UPGRADE_BONUS_CREDITS',
+        details: `Granted ${bonusCredits} bonus code credits for ${planType} via Pakasir order ${orderId}.`
+      }
+    })
+
+    return { duplicate: false, subscriptionId: subscription.id, bonusCredits }
   })
 }
 

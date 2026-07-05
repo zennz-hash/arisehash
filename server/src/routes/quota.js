@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { getActiveSubscription, getQuotaLimit, nextResetAt } from '../utils/quota.js'
+import { getActiveSubscription, getEffectiveQuotaLimit, getQuotaLimit, nextResetAt } from '../utils/quota.js'
 import { requireAuth } from '../auth.js'
 import { prisma } from '../db.js'
 import { costOf, labelFor } from '../utils/pricing.js'
@@ -11,12 +11,13 @@ router.get('/', requireAuth, async (req, res, next) => {
   try {
     const sub = await getActiveSubscription(req.user.id)
     const prdLimit = getQuotaLimit(sub.planType, 'prd')
-    const codeLimit = getQuotaLimit(sub.planType, 'code')
+    const codeLimit = getEffectiveQuotaLimit(sub, 'code')
     res.json({
       planType: sub.planType,
       status: sub.status,
       prdQuota: prdLimit,
       codeQuota: codeLimit,
+      bonusCodeCredits: sub.bonusCodeCredits || 0,
       quotaUsedToday: sub.quotaUsedToday,
       codeQuotaUsedToday: sub.codeQuotaUsedToday,
       remaining: {
