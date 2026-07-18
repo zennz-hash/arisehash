@@ -16,6 +16,8 @@
       --accent-rgb: 197, 248, 42;
       --text: #f4f4f5;
       --text-muted: #a1a1aa;
+      --success: #10b981;
+      --error: #f43f5e;
     }
 
     * {
@@ -41,19 +43,19 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 40px;
+      padding: 20px;
     }
 
     /* Individual Slide */
     .slide {
       position: absolute;
-      width: 90%;
-      max-width: 1100px;
-      height: 600px;
+      width: 95%;
+      max-width: 1200px;
+      height: 640px;
       background: var(--card);
       border: 1px solid var(--card-border);
       border-radius: 24px;
-      padding: 60px;
+      padding: 40px 50px;
       opacity: 0;
       pointer-events: none;
       transform: translateY(20px) scale(0.98);
@@ -71,32 +73,31 @@
     }
 
     /* Headings */
-    h1, h2, h3 {
+    h1, h2, h3, h4, h5 {
       font-family: 'Space Grotesk', sans-serif;
       font-weight: 700;
     }
 
     .eyebrow {
       color: var(--accent);
-      font-size: 14px;
+      font-size: 13px;
       text-transform: uppercase;
       letter-spacing: 0.15em;
-      margin-bottom: 12px;
+      margin-bottom: 8px;
       display: inline-block;
     }
 
     .slide-title {
-      font-size: 42px;
+      font-size: 36px;
       line-height: 1.15;
       color: #ffffff;
-      margin-bottom: 24px;
+      margin-bottom: 16px;
     }
 
     .slide-body {
-      font-size: 17px;
+      font-size: 15px;
       color: var(--text-muted);
-      line-height: 1.6;
-      max-width: 800px;
+      line-height: 1.5;
     }
 
     /* Slide Layouts */
@@ -107,7 +108,7 @@
     }
 
     .hero-slide h1 {
-      font-size: 64px;
+      font-size: 56px;
       letter-spacing: -0.02em;
       margin-bottom: 16px;
       background: linear-gradient(to right, #ffffff, var(--accent));
@@ -116,18 +117,26 @@
     }
 
     .hero-slide p {
-      font-size: 20px;
+      font-size: 18px;
       color: var(--text-muted);
-      margin-bottom: 32px;
-      max-width: 600px;
+      margin-bottom: 24px;
+      max-width: 700px;
     }
 
     .grid-2 {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 40px;
-      align-items: center;
-      margin-top: 20px;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 30px;
+      align-items: stretch;
+      margin-top: 10px;
+      flex: 1;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      margin-top: 15px;
     }
 
     /* Visual Blocks */
@@ -135,8 +144,7 @@
       background: rgba(255, 255, 255, 0.02);
       border: 1px solid var(--card-border);
       border-radius: 16px;
-      padding: 32px;
-      height: 100%;
+      padding: 24px;
       display: flex;
       flex-direction: column;
       justify-content: center;
@@ -145,7 +153,7 @@
     .feature-card {
       background: rgba(255, 255, 255, 0.01);
       border: 1px solid var(--card-border);
-      padding: 20px;
+      padding: 16px;
       border-radius: 12px;
       margin-bottom: 12px;
     }
@@ -153,7 +161,132 @@
     .feature-card strong {
       color: var(--accent);
       display: block;
+      margin-bottom: 4px;
+      font-size: 15px;
+    }
+
+    .feature-card p {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    /* BMC Styles */
+    .bmc-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      gap: 8px;
+      height: 420px;
+      margin-top: 10px;
+    }
+
+    .bmc-cell {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 12px;
+      font-size: 11px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .bmc-cell h5 {
+      font-size: 12px;
+      color: var(--accent);
       margin-bottom: 6px;
+      border-bottom: 1px solid var(--card-border);
+      padding-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .bmc-cell ul {
+      list-style: none;
+      padding-left: 0;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    .bmc-cell li {
+      margin-bottom: 4px;
+      position: relative;
+      padding-left: 8px;
+    }
+    .bmc-cell li::before {
+      content: "•";
+      color: var(--accent);
+      position: absolute;
+      left: 0;
+    }
+
+    .bmc-kp { grid-column: 1; grid-row: 1 / 3; }
+    .bmc-ka { grid-column: 2; grid-row: 1; }
+    .bmc-kr { grid-column: 2; grid-row: 2; }
+    .bmc-vp { grid-column: 3; grid-row: 1 / 3; border-color: rgba(197, 248, 42, 0.3); background: rgba(197, 248, 42, 0.02); }
+    .bmc-cr { grid-column: 4; grid-row: 1; }
+    .bmc-ch { grid-column: 4; grid-row: 2; }
+    .bmc-cs { grid-column: 5; grid-row: 1 / 3; }
+    .bmc-cost { grid-column: 1 / 4; grid-row: 3; }
+    .bmc-rev { grid-column: 4 / 6; grid-row: 3; }
+
+    /* Tables */
+    .comp-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+
+    .comp-table th, .comp-table td {
+      border: 1px solid var(--card-border);
+      padding: 12px 16px;
+      text-align: left;
+      font-size: 13px;
+    }
+
+    .comp-table th {
+      background: rgba(255, 255, 255, 0.03);
+      color: #ffffff;
+      font-weight: 600;
+    }
+
+    .comp-table td strong {
+      color: var(--accent);
+    }
+
+    .comp-table tr.highlight {
+      background: rgba(197, 248, 42, 0.03);
+    }
+
+    /* Badges & Stats */
+    .stat-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 99px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .stat-badge.cpmk {
+      background: rgba(197, 248, 42, 0.1);
+      color: var(--accent);
+      border: 1px solid rgba(197, 248, 42, 0.2);
+    }
+
+    .stat-circle {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      border: 3px solid var(--accent);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 16px;
+      margin: 0 auto 10px;
+      background: rgba(255, 255, 255, 0.02);
     }
 
     /* Navigation Panel */
@@ -238,146 +371,690 @@
     <!-- SLIDE 1: COVER -->
     <div class="slide active hero-slide">
       <div>
-        <span class="eyebrow">Pitch Deck Client</span>
+        <span class="eyebrow">Pitch Deck Kewirausahaan TI (Aksi Nyata)</span>
         <h1>ARISEHASH</h1>
         <p>Platform Pembuatan Prototipe & Aplikasi Web Instan Berbasis Artificial Intelligence</p>
-        <span style="color: var(--accent); font-weight: 500; font-size: 14px; border: 1px solid rgba(197, 248, 42, 0.2); padding: 6px 16px; border-radius: 99px;">
-          Ide Mentah &rarr; Dokumen Teknis &rarr; Kode Fungsional
+        <div style="margin-bottom: 24px;">
+          <span class="stat-badge cpmk">CPMK091 & CPMK092</span>
+        </div>
+        <p style="font-size: 14px; color: var(--accent); margin-bottom: 4px;">
+          Disusun Oleh: Kelompok AriseHash Development Team
+        </p>
+        <span style="color: var(--text-muted); font-size: 12px;">
+          Fokus: Analisis Pesaing & Strategi Pemasaran Digital
         </span>
+      </div>
+      <div style="font-size: 11px; color: var(--text-muted); width: 100%; display: flex; justify-content: space-between; align-items: center;">
+        <span>AriseHash Pitch Deck</span>
+        <span>Slide 1 dari 12</span>
       </div>
     </div>
 
-    <!-- SLIDE 2: THE PROBLEM -->
+    <!-- SLIDE 2: PROFIL USAHA & SEMANGAT KEMANDIRIAN -->
     <div class="slide">
       <div>
-        <span class="eyebrow">Masalah Industri</span>
-        <h2 class="slide-title">Hambatan Kecepatan Rilis Aplikasi</h2>
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+          <div>
+            <span class="eyebrow">Profil Usaha & Kemandirian</span>
+            <h2 class="slide-title">Asal Mula & Bukti Kemandirian AriseHash</h2>
+          </div>
+          <span class="stat-badge cpmk">CPMK091</span>
+        </div>
         <div class="grid-2">
-          <div class="slide-body">
-            <p style="margin-bottom: 16px;">Siklus tradisional pembuatan perangkat lunak sangat lamban dan tidak efisien:</p>
-            <div class="feature-card">
-              <strong>1. Perumusan Spesifikasi Lambat</strong>
-              <p style="font-size: 14px;">Menyusun dokumen Kebutuhan Produk (PRD) memakan waktu berhari-hari sebelum pengembang mulai bekerja.</p>
+          <div class="slide-body" style="display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+              <p style="margin-bottom: 12px; font-weight: 500; color: #ffffff;">Latar Belakang & Cerita Awal:</p>
+              <p style="margin-bottom: 12px;">
+                AriseHash berawal dari keresahan tim pengembang internal (sebelumnya dikenal sebagai <strong>VibeCoderz</strong>) saat harus merumuskan dokumen teknis (PRD) dan merakit prototipe aplikasi React secara manual yang memakan waktu berminggu-minggu sebelum tahap coding dimulai.
+              </p>
+              <p>
+                Melalui **inisiatif mandiri**, tim melakukan riset pasar independen serta menguji model AI modular secara lokal untuk membuktikan kelayakan *auto-correction loop* kode di browser.
+              </p>
             </div>
-            <div class="feature-card">
-              <strong>2. Desain UI vs Fungsionalitas</strong>
-              <p style="font-size: 14px;">Pembuatan mockup visual statis tidak menghasilkan kode kerja asli, memaksa penulisan ulang total.</p>
+            <div class="feature-card" style="margin-bottom: 0;">
+              <strong>Visi & Misi</strong>
+              <p>Menjadi asisten AI global standar untuk pembuatan aplikasi web fungsional tercepat tanpa keterbatasan infrastruktur lokal.</p>
             </div>
           </div>
-          <div class="visual-box" style="border-left: 3px solid #ef4444; background: rgba(239, 68, 68, 0.01);">
-            <h4 style="color: #ef4444; margin-bottom: 8px;">Dampak pada Bisnis:</h4>
-            <ul style="list-style: none; font-size: 15px; line-height: 1.8;">
-              <li>• Biaya rekayasa awal yang terlampau tinggi.</li>
-              <li>• Kehilangan momentum pasar karena peluncuran terlambat.</li>
-              <li>• Miskomunikasi antara kebutuhan bisnis dan eksekusi kode.</li>
+          <div class="visual-box" style="border-left: 3px solid var(--accent);">
+            <h4 style="margin-bottom: 10px; color: #ffffff;">Tantangan Kewirausahaan:</h4>
+            <ul style="list-style: none; font-size: 13px; line-height: 1.6; color: var(--text-muted);">
+              <li style="margin-bottom: 8px;">
+                <strong style="color: var(--accent); display: inline;">• Riset Mandiri Kompetitor:</strong> Menemukan celah pasar di mana platform pesaing membatasi kuota internal dan tidak menyediakan sandboxing interaktif.
+              </li>
+              <li style="margin-bottom: 8px;">
+                <strong style="color: var(--accent); display: inline;">• Kendala Pembiayaan Awal:</strong> Mengembangkan prototipe menggunakan model biaya rendah & skema kuota harian atomik untuk efisiensi R&D.
+              </li>
+              <li>
+                <strong style="color: var(--accent); display: inline;">• Validasi Lapangan:</strong> Menghadapi skeptisisme awal pengembang terhadap kualitas kode hasil generator AI.
+              </li>
             </ul>
           </div>
         </div>
       </div>
-      <div style="font-size: 12px; color: var(--text-muted);">Halaman 2 dari 6</div>
+      <div style="font-size: 11px; color: var(--text-muted); width: 100%; display: flex; justify-content: space-between; align-items: center;">
+        <span>AriseHash Pitch Deck</span>
+        <span>Slide 2 dari 12</span>
+      </div>
     </div>
 
-    <!-- SLIDE 3: THE SOLUTION -->
+    <!-- SLIDE 3: ANALISIS MASALAH INDUSTRI -->
     <div class="slide">
       <div>
-        <span class="eyebrow">Solusi AriseHash</span>
-        <h2 class="slide-title">Mengubah Deskripsi Teks Menjadi Aplikasi</h2>
-        <div class="grid-2">
-          <div class="visual-box" style="border-left: 3px solid var(--accent);">
-            <h3 style="color: var(--accent); margin-bottom: 12px; font-size: 24px;">Metodologi AriseHash</h3>
-            <p style="font-size: 15px; line-height: 1.6; color: var(--text-muted);">
-              Kami menggabungkan generator PRD cerdas dengan sistem perakit kode modular (IDE Sandbox) di cloud. Pengguna cukup menginstruksikan modul apa yang ingin mereka buat, dan AI kami akan menulis serta mengeksekusinya secara real-time.
-            </p>
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+          <div>
+            <span class="eyebrow">Analisis Masalah</span>
+            <h2 class="slide-title">Hambatan Kecepatan Rilis Aplikasi (Time-to-Market)</h2>
           </div>
+          <span class="stat-badge cpmk">CPMK091</span>
+        </div>
+        <div class="grid-2">
           <div class="slide-body">
+            <p style="margin-bottom: 16px;">
+              Siklus tradisional pembuatan perangkat lunak sangat lamban, tidak efisien, dan memiliki beberapa *pain points* kritis di industri:
+            </p>
             <div class="feature-card">
-              <strong>Otomatisasi Penuh (Instan)</strong>
-              <p style="font-size: 14px;">Dapatkan dokumen PRD komprehensif, diagram arsitektur, dan kode React sekaligus dari satu prompt.</p>
+              <strong>1. Perumusan PRD Memakan Waktu</strong>
+              <p>Menyusun Dokumen Kebutuhan Produk (PRD) yang detail dan skema arsitektur database secara manual menghabiskan waktu berhari-hari.</p>
             </div>
             <div class="feature-card">
-              <strong>Editor Interaktif Langsung</strong>
-              <p style="font-size: 14px;">Modifikasi kode secara interaktif dengan browser sandbox terintegrasi untuk pembuktian instan.</p>
+              <strong>2. Desain Visual Bersifat Statis</strong>
+              <p>Mockup desain visual (Figma) tidak menghasilkan kode kerja asli, sehingga memicu penulisan ulang total oleh tim developer.</p>
+            </div>
+            <div class="feature-card">
+              <strong>3. Sinkronisasi Data & Kode yang Buruk</strong>
+              <p>Miskomunikasi antara kebutuhan bisnis yang dinamis dan eksekusi kode backend sering kali menunda peluncuran produk.</p>
+            </div>
+          </div>
+          <div class="visual-box" style="border-left: 3px solid var(--error); background: rgba(244, 63, 94, 0.01);">
+            <h4 style="color: var(--error); margin-bottom: 12px;">Dampak Kerugian Bisnis:</h4>
+            <div style="font-size: 13px; line-height: 1.7;">
+              <div style="display: flex; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px solid var(--card-border); padding-bottom: 4px;">
+                <span>Biaya Rekayasa Awal:</span> <span style="color: var(--error);">Terlampau Tinggi</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px solid var(--card-border); padding-bottom: 4px;">
+                <span>Kehilangan Momentum Pasar:</span> <span style="color: var(--error);">Peluncuran Terlambat</span>
+              </div>
+              <div style="display: flex; justify-content: space-between;">
+                <span>Kompilasi Error Frontend:</span> <span style="color: var(--error);">Debugging Manual Lambat</span>
+              </div>
+            </div>
+            <p style="font-size: 11px; color: var(--text-muted); margin-top: 15px; font-style: italic;">
+              *Riset internal menunjukkan 70% startup tahap awal mengalami keterlambatan rilis produk karena masalah koordinasi spesifikasi & pengerjaan kode.
+            </p>
+          </div>
+        </div>
+      </div>
+      <div style="font-size: 11px; color: var(--text-muted); width: 100%; display: flex; justify-content: space-between; align-items: center;">
+        <span>AriseHash Pitch Deck</span>
+        <span>Slide 3 dari 12</span>
+      </div>
+    </div>
+
+    <!-- SLIDE 4: SOLUSI PRODUK -->
+    <div class="slide">
+      <div>
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+          <div>
+            <span class="eyebrow">Solusi AriseHash</span>
+            <h2 class="slide-title">Mengubah Ide Mentah Menjadi Kode Kerja Instan</h2>
+          </div>
+          <span class="stat-badge cpmk">CPMK091</span>
+        </div>
+        <div class="grid-2">
+          <div class="visual-box" style="border-left: 3px solid var(--accent); background: rgba(197, 248, 42, 0.01);">
+            <h3 style="color: var(--accent); margin-bottom: 12px; font-size: 20px;">Teknologi Generatif Terintegrasi</h3>
+            <p style="font-size: 14px; line-height: 1.6; color: var(--text-muted); margin-bottom: 12px;">
+              AriseHash menggabungkan AI generator PRD yang cerdas dengan sistem editor kode sandbox (IDE Sandpack) langsung di browser. Pengguna cukup memasukkan deskripsi ide, dan AI kami akan menyusun seluruh alur kerja aplikasi secara real-time.
+            </p>
+            <div style="background: rgba(255, 255, 255, 0.02); padding: 12px; border-radius: 8px; border: 1px dashed var(--card-border); font-size: 12px; text-align: center; color: var(--accent);">
+              Input Prompt &rarr; AI PRD & Mermaid &rarr; Sandpack Live Coding &rarr; Auto-Fix Loop
+            </div>
+          </div>
+          <div class="slide-body" style="display: flex; flex-direction: column; justify-content: space-between;">
+            <div class="feature-card">
+              <strong>Otomatisasi Instan Spesifikasi</strong>
+              <p>Hasilkan dokumen teknis lengkap, diagram alir Mermaid.js, dan rancangan skema database Postgres dalam hitungan detik.</p>
+            </div>
+            <div class="feature-card">
+              <strong>AI Sandbox Live Interpreter</strong>
+              <p>Mengeksekusi kode React fungsional secara instan di cloud sandbox, lengkap dengan penanganan modul secara aman.</p>
+            </div>
+            <div class="feature-card" style="margin-bottom: 0;">
+              <strong>Kolaborasi Tim Real-Time</strong>
+              <p>Undang rekan tim untuk meninjau, memodifikasi, dan menguji prototipe bersama-sama dalam satu dasbor terpadu.</p>
             </div>
           </div>
         </div>
       </div>
-      <div style="font-size: 12px; color: var(--text-muted);">Halaman 3 dari 6</div>
+      <div style="font-size: 11px; color: var(--text-muted); width: 100%; display: flex; justify-content: space-between; align-items: center;">
+        <span>AriseHash Pitch Deck</span>
+        <span>Slide 4 dari 12</span>
+      </div>
     </div>
 
-    <!-- SLIDE 4: VALUE PROPOSITION -->
+    <!-- SLIDE 5: CONTOH PRODUK & BUKTI FISIK/DIGITAL -->
     <div class="slide">
       <div>
-        <span class="eyebrow">Proporsi Nilai</span>
-        <h2 class="slide-title">Mengapa Memilih Platform Kami?</h2>
-        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 20px;">
-          <div class="visual-box" style="text-align: center; justify-content: flex-start; padding: 24px;">
-            <div style="font-size: 32px; margin-bottom: 12px;">⚡</div>
-            <h4 style="margin-bottom: 8px; color: #ffffff;">Kecepatan Maksimal</h4>
-            <p style="font-size: 13px; color: var(--text-muted);">Penyusunan prototipe selesai dalam waktu kurang dari 5 menit, bukan mingguan.</p>
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+          <div>
+            <span class="eyebrow">Bukti Digital Produk</span>
+            <h2 class="slide-title">Kinerja Sandbox IDE & Auto-Correction Loop</h2>
           </div>
-          <div class="visual-box" style="text-align: center; justify-content: flex-start; padding: 24px;">
+          <span class="stat-badge cpmk">CPMK091</span>
+        </div>
+        <div class="grid-2">
+          <div class="slide-body" style="display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+              <p style="margin-bottom: 12px; font-weight: 500; color: #ffffff;">Mekanisme Kerja Sandbox:</p>
+              <p style="margin-bottom: 12px;">
+                Kami menggunakan library `@codesandbox/sandpack-react` sebagai runtime isolasi di browser untuk merender aplikasi. AI menyusun kode menggunakan tag XML khusus `<vcFile path="/App.tsx">` yang dialirkan via Server-Sent Events (SSE).
+              </p>
+              <p>
+                Jika kode yang dihasilkan AI mengalami galat kompilasi, sistem interceptor kami akan menangkap pesan error tersebut, melakukan penundaan (debounce) selama 3 detik, lalu mengirimkannya kembali ke AI secara otomatis untuk diperbaiki.
+              </p>
+            </div>
+            <div class="feature-card" style="margin-bottom: 0; background: rgba(16, 185, 129, 0.05); border-color: rgba(16, 185, 129, 0.2);">
+              <strong style="color: var(--success);">Bukti Nyata Sukses Auto-Fix:</strong>
+              <p>Mendeteksi error impor modul framer-motion eksternal, menghapus import ilegal secara otomatis, dan memuat ulang preview sandbox dalam 5 detik.</p>
+            </div>
+          </div>
+          <div class="visual-box" style="padding: 12px; background: #0c0c0e; border: 1px solid var(--card-border);">
+            <div style="display: flex; align-items: center; justify-content: space-between; background: #1e1e24; padding: 6px 12px; border-top-left-radius: 8px; border-top-right-radius: 8px; border-bottom: 1px solid var(--card-border);">
+              <span style="font-size: 11px; font-family: monospace; color: var(--accent);">Sandpack Editor - App.jsx</span>
+              <div style="display: flex; gap: 4px;">
+                <span style="width: 8px; height: 8px; border-radius: 50%; background: #ff5f56;"></span>
+                <span style="width: 8px; height: 8px; border-radius: 50%; background: #ffbd2e;"></span>
+                <span style="width: 8px; height: 8px; border-radius: 50%; background: #27c93f;"></span>
+              </div>
+            </div>
+            <pre style="font-family: monospace; font-size: 10px; line-height: 1.4; color: #81a1c1; padding: 12px; overflow-x: auto; background: #18181f; height: 260px;">
+1: <span style="color: #81a1c1;">import</span> React <span style="color: #81a1c1;">from</span> <span style="color: #a3be8c;">'react'</span>;
+2: <span style="color: #81a1c1;">import</span> { Play, Key } <span style="color: #81a1c1;">from</span> <span style="color: #a3be8c;">'lucide-react'</span>;
+3: 
+4: <span style="color: #81a1c1;">export default function</span> <span style="color: #8fbcbb;">App</span>() {
+5:   <span style="color: #81a1c1;">return</span> (
+6:     &lt;<span style="color: #8fbcbb;">div</span> <span style="color: #d8dee9;">className</span>=<span style="color: #a3be8c;">"p-8 bg-zinc-950 text-white"</span>&gt;
+7:       &lt;<span style="color: #8fbcbb;">h1</span>&gt;Welcome to AriseHash AI Sandbox&lt;/<span style="color: #8fbcbb;">h1</span>&gt;
+8:       &lt;<span style="color: #8fbcbb;">button</span> <span style="color: #d8dee9;">className</span>=<span style="color: #a3be8c;">"mt-4 bg-lime-400 text-black px-4"</span>&gt;
+9:         Launch Prototype
+10:      &lt;/<span style="color: #8fbcbb;">button</span>&gt;
+11:    &lt;/<span style="color: #8fbcbb;">div</span>&gt;
+12:  );
+13: }</pre>
+            <div style="background: rgba(16, 185, 129, 0.1); padding: 6px; border-radius: 4px; font-size: 10px; text-align: center; color: var(--success); font-family: monospace; margin-top: 6px;">
+              [Sandpack Status: Compilation Successful]
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="font-size: 11px; color: var(--text-muted); width: 100%; display: flex; justify-content: space-between; align-items: center;">
+        <span>AriseHash Pitch Deck</span>
+        <span>Slide 5 dari 12</span>
+      </div>
+    </div>
+
+    <!-- SLIDE 6: UNIQUE SELLING PROPOSITION (USP) -->
+    <div class="slide">
+      <div>
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+          <div>
+            <span class="eyebrow">Unique Selling Proposition</span>
+            <h2 class="slide-title">Mengapa AriseHash Lebih Unggul?</h2>
+          </div>
+          <span class="stat-badge cpmk">CPMK091</span>
+        </div>
+        <div class="grid-3" style="margin-top: 25px;">
+          <div class="visual-box" style="text-align: center; justify-content: flex-start; padding: 24px; border-color: rgba(197, 248, 42, 0.2);">
             <div style="font-size: 32px; margin-bottom: 12px;">🛡️</div>
             <h4 style="margin-bottom: 8px; color: #ffffff;">Dukungan BYOK</h4>
-            <p style="font-size: 13px; color: var(--text-muted);">Integrasikan API Key Anda sendiri (OpenAI/Anthropic) tanpa batasan kuota internal.</p>
-          </div>
-          <div class="visual-box" style="text-align: center; justify-content: flex-start; padding: 24px;">
-            <div style="font-size: 32px; margin-bottom: 12px;">👥</div>
-            <h4 style="margin-bottom: 8px; color: #ffffff;">Kolaboratif</h4>
-            <p style="font-size: 13px; color: var(--text-muted);">Undang tim Anda untuk meninjau, menjalankan, dan mengedit prototipe bersama-sama.</p>
-          </div>
-        </div>
-      </div>
-      <div style="font-size: 12px; color: var(--text-muted);">Halaman 4 dari 6</div>
-    </div>
-
-    <!-- SLIDE 5: MONETIZATION -->
-    <div class="slide">
-      <div>
-        <span class="eyebrow">Model Bisnis & Finansial</span>
-        <h2 class="slide-title">Skema Berlangganan (SaaS)</h2>
-        <div class="grid-2">
-          <div class="slide-body">
-            <p style="margin-bottom: 16px;">Model monetisasi berbasis freemium dengan konversi tinggi untuk pengembang mandiri maupun skala tim:</p>
-            <div style="display: flex; flex-direction: column; gap: 8px;">
-              <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--card-border); padding: 8px 0;">
-                <span>Paket Starter (Pro)</span>
-                <strong style="color: var(--accent);">Rp 20.000 / Bulan</strong>
-              </div>
-              <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--card-border); padding: 8px 0;">
-                <span>Paket Pro Max (Premium)</span>
-                <strong style="color: var(--accent);">Rp 75.000 / Bulan</strong>
-              </div>
-            </div>
-            <p style="font-size: 14px; margin-top: 16px; color: #10b981;">
-              <strong>Traction Terkini (Juni 2026):</strong> 3 Pengguna Pro Aktif berhasil disemai di sistem dasbor admin lokal dengan status pembayaran LUNAS.
+            <p style="font-size: 12px; color: var(--text-muted); line-height: 1.5;">
+              Pengguna dapat menggunakan API Key mereka sendiri (OpenAI/Anthropic) di dasbor untuk menghindari limitasi kuota internal platform.
             </p>
           </div>
-          <div class="visual-box" style="background: rgba(197, 248, 42, 0.02); border-color: rgba(197, 248, 42, 0.15);">
-            <h4 style="color: var(--accent); margin-bottom: 12px;">Simulasi Laba Rugi</h4>
-            <div style="font-size: 14px; line-height: 1.8;">
-              <div style="display: flex; justify-content: space-between;"><span>Pendapatan Kotor:</span> <span>Rp 60.000</span></div>
-              <div style="display: flex; justify-content: space-between; color: #f43f5e;"><span>Biaya API & Server:</span> <span>(Rp 25.000)</span></div>
-              <hr style="border-color: var(--card-border); margin: 6px 0;" />
-              <div style="display: flex; justify-content: space-between; font-weight: 700; color: #10b981;"><span>Laba Bersih:</span> <span>Rp 35.000</span></div>
+          <div class="visual-box" style="text-align: center; justify-content: flex-start; padding: 24px; border-color: rgba(197, 248, 42, 0.2);">
+            <div style="font-size: 32px; margin-bottom: 12px;">🔄</div>
+            <h4 style="margin-bottom: 8px; color: #ffffff;">Auto-Correction Loop</h4>
+            <p style="font-size: 12px; color: var(--text-muted); line-height: 1.5;">
+              Sistem secara otomatis mendeteksi error kompilasi kode di browser dan memerintahkan AI untuk memperbaiki error tersebut tanpa intervensi manual.
+            </p>
+          </div>
+          <div class="visual-box" style="text-align: center; justify-content: flex-start; padding: 24px; border-color: rgba(197, 248, 42, 0.2);">
+            <div style="font-size: 32px; margin-bottom: 12px;">⚙️</div>
+            <h4 style="margin-bottom: 8px; color: #ffffff;">Kuotasi Atomik</h4>
+            <p style="font-size: 12px; color: var(--text-muted); line-height: 1.5;">
+              Logika pembatasan jatah harian ketat di tingkat database Postgres untuk mencegah serangan eksploitasi multi-proses ilegal secara paralel.
+            </p>
+          </div>
+        </div>
+        <div class="feature-card" style="margin-top: 20px; background: rgba(197, 248, 42, 0.02);">
+          <p style="font-size: 13px; text-align: center; color: var(--text-muted);">
+            **Keunggulan Mutlak:** Kami tidak hanya memberikan core code generator mentah, melainkan menyajikan satu ekosistem lengkap dari visualisasi PRD Mermaid.js hingga runtime fungsional di browser sandbox yang tahan terhadap error.
+          </p>
+        </div>
+      </div>
+      <div style="font-size: 11px; color: var(--text-muted); width: 100%; display: flex; justify-content: space-between; align-items: center;">
+        <span>AriseHash Pitch Deck</span>
+        <span>Slide 6 dari 12</span>
+      </div>
+    </div>
+
+    <!-- SLIDE 7: BUSINESS MODEL CANVAS (BMC) -->
+    <div class="slide" style="padding: 20px 40px;">
+      <div>
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5px;">
+          <div>
+            <span class="eyebrow">Model Bisnis</span>
+            <h2 class="slide-title" style="font-size: 28px; margin-bottom: 0;">Sembilan Blok Business Model Canvas (BMC)</h2>
+          </div>
+          <span class="stat-badge cpmk">CPMK091</span>
+        </div>
+        
+        <div class="bmc-grid">
+          <!-- Key Partners -->
+          <div class="bmc-cell bmc-kp">
+            <h5>🤝 Key Partners</h5>
+            <ul>
+              <li>Penyedia API AI (9router, OpenAI)</li>
+              <li>Hosting Platform (Vercel & Supabase)</li>
+              <li>Komunitas Developer Open Source</li>
+            </ul>
+          </div>
+          
+          <!-- Key Activities -->
+          <div class="bmc-cell bmc-ka">
+            <h5>⚙️ Key Activities</h5>
+            <ul>
+              <li>Optimasi Model AI</li>
+              <li>Perawatan Engine Sandbox</li>
+              <li>Pemasaran Digital</li>
+            </ul>
+          </div>
+          
+          <!-- Key Resources -->
+          <div class="bmc-cell bmc-kr">
+            <h5>💻 Key Resources</h5>
+            <ul>
+              <li>Kode Sumber Sandbox</li>
+              <li>Keahlian Tim Pengembang</li>
+              <li>Aset Promosi & Medsos</li>
+            </ul>
+          </div>
+          
+          <!-- Value Propositions -->
+          <div class="bmc-cell bmc-vp">
+            <h5>💎 Value Propositions</h5>
+            <ul>
+              <li>Pembuatan Prototype & PRD Instan &lt; 5 Menit</li>
+              <li>Fitur Unik Auto-Correction</li>
+              <li>Model Mandiri (BYOK)</li>
+              <li>Biaya Mulai Rp 20.000 (Sangat Murah)</li>
+            </ul>
+          </div>
+          
+          <!-- Customer Relationships -->
+          <div class="bmc-cell bmc-cr">
+            <h5>❤️ Cust. Relationships</h5>
+            <ul>
+              <li>Dukungan Komunitas Discord</li>
+              <li>Update Fitur Transparan</li>
+              <li>Sistem Refund Kuota Otomatis</li>
+            </ul>
+          </div>
+          
+          <!-- Channels -->
+          <div class="bmc-cell bmc-ch">
+            <h5>📢 Channels</h5>
+            <ul>
+              <li>Instagram & TikTok Medsos</li>
+              <li>Komunitas GitHub & Dev.to</li>
+              <li>Rekomendasi Word-of-Mouth</li>
+            </ul>
+          </div>
+          
+          <!-- Customer Segments -->
+          <div class="bmc-cell bmc-cs">
+            <h5>👥 Cust. Segments</h5>
+            <ul>
+              <li>Freelance Developer Mandiri</li>
+              <li>Agensi IT & Software House</li>
+              <li>Early Stage Startup Founders</li>
+            </ul>
+          </div>
+          
+          <!-- Cost Structure -->
+          <div class="bmc-cell bmc-cost">
+            <h5>💸 Cost Structure</h5>
+            <ul>
+              <li>Pengembangan: Biaya API AI R&D (Rp 3.840.000) & Lisensi Claude Code (Rp 1.600.000)</li>
+              <li>Operasional: Biaya API Produksi (Rp 15.000/bln) & Server Supabase (Rp 10.000/bln)</li>
+            </ul>
+          </div>
+          
+          <!-- Revenue Streams -->
+          <div class="bmc-cell bmc-rev">
+            <h5>💰 Revenue Streams</h5>
+            <ul>
+              <li>Starter Pro Plan: Rp 20.000/bln</li>
+              <li>Pro Max Plan: Rp 75.000/bln</li>
+              <li>B2B Custom API Engine</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div style="font-size: 11px; color: var(--text-muted); width: 100%; display: flex; justify-content: space-between; align-items: center;">
+        <span>AriseHash Pitch Deck</span>
+        <span>Slide 7 dari 12</span>
+      </div>
+    </div>
+
+    <!-- SLIDE 8: PENEKANAN BLOK BMC UTAMA -->
+    <div class="slide">
+      <div>
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+          <div>
+            <span class="eyebrow">Fokus Blok Bisnis</span>
+            <h2 class="slide-title">Customer Segments, Channels & Revenue Streams</h2>
+          </div>
+          <span class="stat-badge cpmk">CPMK091</span>
+        </div>
+        <div class="grid-3" style="margin-top: 20px; height: 380px;">
+          <div class="visual-box" style="justify-content: flex-start; padding: 20px;">
+            <h4 style="color: var(--accent); margin-bottom: 12px; font-size: 16px;">👥 Customer Segments</h4>
+            <p style="font-size: 12px; line-height: 1.5; color: var(--text-muted); margin-bottom: 8px;">
+              Fokus pada pengguna yang memiliki tingkat kebutuhan validasi aplikasi tercepat:
+            </p>
+            <ul style="list-style: none; font-size: 12px; line-height: 1.6; color: var(--text-muted);">
+              <li>• <strong>Freelancer:</strong> Membuat portofolio demo interaktif klien dengan cepat.</li>
+              <li>• <strong>Early Founders:</strong> Memvalidasi ide produk tanpa modal developer yang tinggi.</li>
+              <li>• <strong>Software House:</strong> Mempercepat pra-penjualan proyek IT.</li>
+            </ul>
+          </div>
+          <div class="visual-box" style="justify-content: flex-start; padding: 20px;">
+            <h4 style="color: var(--accent); margin-bottom: 12px; font-size: 16px;">📢 Channels (Saluran)</h4>
+            <p style="font-size: 12px; line-height: 1.5; color: var(--text-muted); margin-bottom: 8px;">
+              Bagaimana kami menyampaikan solusi AriseHash ke pasar pengembang:
+            </p>
+            <ul style="list-style: none; font-size: 12px; line-height: 1.6; color: var(--text-muted);">
+              <li>• <strong>Media Sosial Organik:</strong> Video marketing demonstrasi AI editor di Instagram & TikTok.</li>
+              <li>• <strong>Forum Developer:</strong> Menampilkan hasil kode di forum GitHub, Discord, dan Dev.to.</li>
+              <li>• <strong>Networking:</strong> Integrasi langsung dengan inkubator bisnis lokal.</li>
+            </ul>
+          </div>
+          <div class="visual-box" style="justify-content: flex-start; padding: 20px;">
+            <h4 style="color: var(--accent); margin-bottom: 12px; font-size: 16px;">💰 Revenue Streams</h4>
+            <p style="font-size: 12px; line-height: 1.5; color: var(--text-muted); margin-bottom: 8px;">
+              Struktur monetisasi yang bersahabat untuk mendorong adopsi cepat:
+            </p>
+            <ul style="list-style: none; font-size: 12px; line-height: 1.6; color: var(--text-muted);">
+              <li>• <strong>Starter (Pro):</strong> Rp 20.000 / Bulan (Untuk pengembang mandiri, mendukung bypass BYOK).</li>
+              <li>• <strong>Pro Max:</strong> Rp 75.000 / Bulan (Untuk fitur multi-page prioritas dan kuota internal besar).</li>
+              <li>• **Traction Nyata:** Terjual ke 3 user awal dengan pendapatan kotor sebesar Rp 60.000.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div style="font-size: 11px; color: var(--text-muted); width: 100%; display: flex; justify-content: space-between; align-items: center;">
+        <span>AriseHash Pitch Deck</span>
+        <span>Slide 8 dari 12</span>
+      </div>
+    </div>
+
+    <!-- SLIDE 9: ANALISIS BENCHMARKING PESAING -->
+    <div class="slide">
+      <div>
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+          <div>
+            <span class="eyebrow">Analisis Kompetitor</span>
+            <h2 class="slide-title">Analisis Benchmarking Pesaing di Pasar AI Generatif</h2>
+          </div>
+          <span class="stat-badge cpmk">CPMK092</span>
+        </div>
+        <table class="comp-table">
+          <thead>
+            <tr>
+              <th>Dimensi Perbandingan</th>
+              <th style="color: var(--accent); background: rgba(197, 248, 42, 0.05);">AriseHash (Kami)</th>
+              <th>v0.dev (Vercel)</th>
+              <th>Bolt.new (StackBlitz)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Fitur Utama</strong></td>
+              <td>PRD + Diagram Mermaid + Sandpack Sandbox React + Auto-Correction</td>
+              <td>Hanya visual UI builder (React/HTML component)</td>
+              <td>Fullstack node environment sandbox di browser</td>
+            </tr>
+            <tr class="highlight">
+              <td><strong>Harga Berlangganan</strong></td>
+              <td><strong>Sangat Murah (Rp 20.000 - Rp 75.000 / bln)</strong></td>
+              <td>Mahal (Min. $20 / Rp 320.000 / bln)</td>
+              <td>Mahal (Min. $9 - $29 / bln)</td>
+            </tr>
+            <tr>
+              <td><strong>Target Pasar Utama</strong></td>
+              <td>Indonesian Freelancers, Early Startup Founders, Local Agencies</td>
+              <td>Global Web Developers skala menengah-besar</td>
+              <td>Global Senior Engineers & Software House</td>
+            </tr>
+            <tr>
+              <td><strong>Teknologi</strong></td>
+              <td>React 18, `@codesandbox/sandpack`, BYOK API Fallback Logic</td>
+              <td>Next.js, Vercel AI SDK, Closed-source AI Model</td>
+              <td>WebContainers, WebAssembly Node Runtime</td>
+            </tr>
+          </tbody>
+        </table>
+        <p style="font-size: 12px; color: var(--text-muted); margin-top: 15px;">
+          **Kesimpulan Benchmarking:** AriseHash memiliki keunggulan kompetitif pada **biaya langganan lokal** yang sangat terjangkau serta fitur **Bring Your Own Key (BYOK)** yang memberikan kebebasan penuh dari sisi kuota pemakaian API AI bagi para developer independen.
+        </p>
+      </div>
+      <div style="font-size: 11px; color: var(--text-muted); width: 100%; display: flex; justify-content: space-between; align-items: center;">
+        <span>AriseHash Pitch Deck</span>
+        <span>Slide 9 dari 12</span>
+      </div>
+    </div>
+
+    <!-- SLIDE 10: WAWANCARA LAPANGAN & REVISI PRODUK -->
+    <div class="slide">
+      <div>
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+          <div>
+            <span class="eyebrow">Validasi Pasar</span>
+            <h2 class="slide-title">Wawancara Lapangan Calon Pengguna & Iterasi Produk</h2>
+          </div>
+          <span class="stat-badge cpmk">CPMK091</span>
+        </div>
+        <div class="grid-3" style="margin-top: 20px;">
+          <div class="visual-box" style="justify-content: flex-start; padding: 16px;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+              <div style="width: 32px; height: 32px; border-radius: 50%; background: #1e1e24; display: flex; align-items: center; justify-content: center; font-weight: bold; color: var(--accent);">B</div>
+              <div>
+                <h5 style="font-size: 13px; color: #ffffff;">Budi Santoso</h5>
+                <p style="font-size: 10px; color: var(--text-muted);">Freelance Web Developer</p>
+              </div>
+            </div>
+            <p style="font-size: 11px; font-style: italic; color: var(--text-muted); line-height: 1.4; margin-bottom: 10px;">
+              "Saya sering kewalahan menyusun PRD untuk klien. Butuh alat yang sekali klik langsung buat PRD & layout UI dasar."
+            </p>
+            <div style="background: rgba(16, 185, 129, 0.05); padding: 8px; border-radius: 6px; border: 1px solid rgba(16, 185, 129, 0.2); font-size: 10px;">
+              <strong style="color: var(--success); display: block;">Revisi Produk:</strong>
+              Menambahkan AI PRD & Mermaid diagram generator instan sebelum menulis kode.
+            </div>
+          </div>
+          
+          <div class="visual-box" style="justify-content: flex-start; padding: 16px;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+              <div style="width: 32px; height: 32px; border-radius: 50%; background: #1e1e24; display: flex; align-items: center; justify-content: center; font-weight: bold; color: var(--accent);">S</div>
+              <div>
+                <h5 style="font-size: 13px; color: #ffffff;">Siti Aminah</h5>
+                <p style="font-size: 10px; color: var(--text-muted);">Early Startup Founder</p>
+              </div>
+            </div>
+            <p style="font-size: 11px; font-style: italic; color: var(--text-muted); line-height: 1.4; margin-bottom: 10px;">
+              "Beban biaya bulanan platform global sangat mahal ($20+/bulan). Kami butuh harga bersahabat dengan limitasi transparan."
+            </p>
+            <div style="background: rgba(16, 185, 129, 0.05); padding: 8px; border-radius: 6px; border: 1px solid rgba(16, 185, 129, 0.2); font-size: 10px;">
+              <strong style="color: var(--success); display: block;">Revisi Produk:</strong>
+              Merilis paket Starter Pro seharga Rp 20.000/bulan dengan skema quota claim atomik yang adil.
+            </div>
+          </div>
+
+          <div class="visual-box" style="justify-content: flex-start; padding: 16px;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+              <div style="width: 32px; height: 32px; border-radius: 50%; background: #1e1e24; display: flex; align-items: center; justify-content: center; font-weight: bold; color: var(--accent);">R</div>
+              <div>
+                <h5 style="font-size: 13px; color: #ffffff;">Rian Hidayat</h5>
+                <p style="font-size: 10px; color: var(--text-muted);">Digital Agency Owner</p>
+              </div>
+            </div>
+            <p style="font-size: 11px; font-style: italic; color: var(--text-muted); line-height: 1.4; margin-bottom: 10px;">
+              "Sering kali AI menghasilkan kode React yang error / patah. Debug manual di luar browser sangat merepotkan."
+            </p>
+            <div style="background: rgba(16, 185, 129, 0.05); padding: 8px; border-radius: 6px; border: 1px solid rgba(16, 185, 129, 0.2); font-size: 10px;">
+              <strong style="color: var(--success); display: block;">Revisi Produk:</strong>
+              Menerapkan Auto-Correction Loop (Auto-Fix) 3 detik untuk debugging otomatis di browser sandbox.
             </div>
           </div>
         </div>
       </div>
-      <div style="font-size: 12px; color: var(--text-muted);">Halaman 5 dari 6</div>
+      <div style="font-size: 11px; color: var(--text-muted); width: 100%; display: flex; justify-content: space-between; align-items: center;">
+        <span>AriseHash Pitch Deck</span>
+        <span>Slide 10 dari 12</span>
+      </div>
     </div>
 
-    <!-- SLIDE 6: SUMMARY & CALL TO ACTION -->
-    <div class="slide hero-slide">
+    <!-- SLIDE 11: PEMASARAN DIGITAL & VIDEO ENGAGEMENT -->
+    <div class="slide">
       <div>
-        <span class="eyebrow">Mari Bekerjasama</span>
-        <h2 style="font-size: 46px; margin-bottom: 16px;">Percepat Rekayasa Web Anda Bersama AriseHash</h2>
-        <p style="max-width: 700px; margin: 0 auto 32px; font-size: 16px;">Bergabunglah dengan ratusan pengembang yang telah memangkas waktu pengerjaan proyek awal dari mingguan menjadi menit.</p>
-        <div style="display: flex; gap: 12px; justify-content: center;">
-          <a href="https://arisehash.com" target="_blank" class="btn" style="background: var(--accent); color: #000000; border-color: transparent; font-weight: 600; text-decoration: none;">Kunjungi Website Kami</a>
-          <button class="btn" onclick="goToSlide(0)">Kembali ke Awal</button>
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+          <div>
+            <span class="eyebrow">Strategi Pemasaran Digital</span>
+            <h2 class="slide-title">Video Marketing & Analisis Interaksi (Engagement)</h2>
+          </div>
+          <span class="stat-badge cpmk">CPMK092</span>
+        </div>
+        <div class="grid-2">
+          <div class="visual-box" style="background: #09090b; padding: 20px; border: 1px solid var(--card-border);">
+            <div style="width: 100%; height: 180px; background: rgba(255,255,255,0.02); border-radius: 8px; border: 1px dashed var(--accent); display: flex; flex-direction: column; align-items: center; justify-content: center;">
+              <div style="font-size: 40px; margin-bottom: 10px;">🎬</div>
+              <h5 style="font-size: 14px; color: #ffffff;">Video Teaser AriseHash</h5>
+              <p style="font-size: 11px; color: var(--text-muted);">Diunggah ke Instagram Reels & TikTok</p>
+              <span style="font-size: 10px; color: var(--accent); margin-top: 8px; border: 1px solid rgba(197,248,42,0.3); padding: 2px 8px; border-radius: 4px;">AriseHash_Teaser_Final.mp4</span>
+            </div>
+            <div style="display: flex; justify-content: space-around; margin-top: 15px;">
+              <div style="text-align: center;">
+                <div class="stat-circle" style="border-color: var(--accent); color: var(--accent);">5.2k</div>
+                <span style="font-size: 11px; color: var(--text-muted);">Views</span>
+              </div>
+              <div style="text-align: center;">
+                <div class="stat-circle" style="border-color: var(--success); color: var(--success);">480</div>
+                <span style="font-size: 11px; color: var(--text-muted);">Likes</span>
+              </div>
+              <div style="text-align: center;">
+                <div class="stat-circle" style="border-color: #38bdf8; color: #38bdf8;">64</div>
+                <span style="font-size: 11px; color: var(--text-muted);">Comments</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="slide-body" style="display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+              <p style="font-weight: 600; color: #ffffff; margin-bottom: 8px;">Analisis & Interpretasi Data Medsos:</p>
+              <ul style="list-style: none; font-size: 13px; line-height: 1.6; color: var(--text-muted);">
+                <li style="margin-bottom: 8px;">
+                  <strong style="color: var(--accent);">• Efektivitas Konten:</strong> Video demonstrasi real-time dari "IDE Mentah menjadi Aplikasi" berdurasi 30 detik memicu konversi tertinggi (rasio simpan/share mencapai 12%).
+                </li>
+                <li style="margin-bottom: 8px;">
+                  <strong style="color: var(--accent);">• Masukan Komentar:</strong> Sebagian besar pemirsa tertarik pada skema BYOK (Bring Your Own Key) karena mereka merasa lebih hemat menggunakan saldo token AI mereka sendiri.
+                </li>
+                <li>
+                  <strong style="color: var(--accent);">• Rencana Perbaikan Strategi:</strong> Melakukan rilis edukasi berseri (content series) berisi contoh-contoh pembuatan aplikasi fungsional siap pakai menggunakan AriseHash.
+                </li>
+              </ul>
+            </div>
+            <div style="background: rgba(197, 248, 42, 0.03); padding: 10px; border-radius: 8px; border: 1px solid rgba(197,248,42,0.1); font-size: 11px; text-align: center;">
+              *Bukti tayang & statistik terlampir secara live pada sistem dasbor analitik Instagram Business.
+            </div>
+          </div>
         </div>
       </div>
-      <div style="font-size: 12px; color: var(--text-muted); width: 100%; text-align: center;">Halaman 6 dari 6</div>
+      <div style="font-size: 11px; color: var(--text-muted); width: 100%; display: flex; justify-content: space-between; align-items: center;">
+        <span>AriseHash Pitch Deck</span>
+        <span>Slide 11 dari 12</span>
+      </div>
+    </div>
+
+    <!-- SLIDE 12: TRAKSI FINANSIAL & LABA RUGI OPERASIONAL -->
+    <div class="slide">
+      <div>
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+          <div>
+            <span class="eyebrow">Analisis Keuangan</span>
+            <h2 class="slide-title">Laporan Laba Rugi Operasional & Traksi Awal</h2>
+          </div>
+          <span class="stat-badge cpmk">CPMK091</span>
+        </div>
+        <div class="grid-2">
+          <div class="slide-body">
+            <p style="margin-bottom: 12px; font-weight: 500; color: #ffffff;">Ringkasan Pendapatan & Beban Operasional (Juni 2026):</p>
+            <div style="font-size: 13px; line-height: 1.7; background: rgba(255,255,255,0.01); padding: 16px; border-radius: 12px; border: 1px solid var(--card-border);">
+              <div style="display: flex; justify-content: space-between; margin-bottom: 6px; border-bottom: 1px solid var(--card-border); padding-bottom: 4px;">
+                <span>1. Pendapatan Langganan (3 User PRO x Rp 20.000)</span>
+                <strong style="color: var(--success);">Rp 60.000</strong>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-bottom: 6px; border-bottom: 1px solid var(--card-border); padding-bottom: 4px; color: var(--text-muted);">
+                <span>2. Beban API AI (OpenAI, Anthropic, Gemini, Qwen)</span>
+                <span style="color: var(--error);">(Rp 15.000)</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-bottom: 6px; border-bottom: 1px solid var(--card-border); padding-bottom: 4px; color: var(--text-muted);">
+                <span>3. Beban Infrastruktur Server & DB (Supabase, Vercel)</span>
+                <span style="color: var(--error);">(Rp 10.000)</span>
+              </div>
+              <hr style="border-color: var(--card-border); margin: 8px 0;" />
+              <div style="display: flex; justify-content: space-between; font-size: 15px; font-weight: 700;">
+                <span>Laba Bersih Operasional (Net Profit)</span>
+                <strong style="color: var(--success);">Rp 35.000</strong>
+              </div>
+            </div>
+            <p style="font-size: 11px; color: var(--text-muted); margin-top: 10px;">
+              *Catatan: Biaya awal R&D (lisensi Claude Code Rp1,6M & API Keys R&D Rp3,84M) dimasukkan sebagai investasi modal disetor awal pendiri.
+            </p>
+          </div>
+          
+          <div class="visual-box" style="border-color: rgba(16, 185, 129, 0.2); background: rgba(16, 185, 129, 0.01);">
+            <h4 style="color: var(--success); margin-bottom: 10px; font-size: 16px;">Invoice Terbit Terkini:</h4>
+            <div style="font-size: 11px; line-height: 1.6;">
+              <div style="background: rgba(255,255,255,0.02); padding: 8px; border-radius: 8px; margin-bottom: 6px; border: 1px solid var(--card-border); display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <span style="font-weight: 600; color: #ffffff; display: block;">INV/2026/06/001</span>
+                  <span style="color: var(--text-muted);">Budi Santoso - 15 Jun 2026</span>
+                </div>
+                <span style="background: rgba(16,185,129,0.2); color: var(--success); padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 9px;">LUNAS</span>
+              </div>
+              <div style="background: rgba(255,255,255,0.02); padding: 8px; border-radius: 8px; margin-bottom: 6px; border: 1px solid var(--card-border); display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <span style="font-weight: 600; color: #ffffff; display: block;">INV/2026/06/002</span>
+                  <span style="color: var(--text-muted);">Siti Aminah - 18 Jun 2026</span>
+                </div>
+                <span style="background: rgba(16,185,129,0.2); color: var(--success); padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 9px;">LUNAS</span>
+              </div>
+              <div style="background: rgba(255,255,255,0.02); padding: 8px; border-radius: 8px; border: 1px solid var(--card-border); display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <span style="font-weight: 600; color: #ffffff; display: block;">INV/2026/06/003</span>
+                  <span style="color: var(--text-muted);">Rian Hidayat - 20 Jun 2026</span>
+                </div>
+                <span style="background: rgba(16,185,129,0.2); color: var(--success); padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 9px;">LUNAS</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="font-size: 11px; color: var(--text-muted); width: 100%; display: flex; justify-content: space-between; align-items: center;">
+        <span>AriseHash Pitch Deck</span>
+        <span>Slide 12 dari 12</span>
+      </div>
     </div>
 
   </div>
@@ -385,7 +1062,7 @@
   <!-- Navigation Panel -->
   <div class="nav-bar">
     <div class="nav-brand">
-      <img src="/logo.png" alt="AriseHash">
+      <img src="/logo.png" alt="AriseHash" onerror="this.src='https://img.icons8.com/color/48/artificial-intelligence.png'">
       <span>AriseHash</span>
     </div>
     
@@ -397,6 +1074,12 @@
         <div class="dot" onclick="goToSlide(3)"></div>
         <div class="dot" onclick="goToSlide(4)"></div>
         <div class="dot" onclick="goToSlide(5)"></div>
+        <div class="dot" onclick="goToSlide(6)"></div>
+        <div class="dot" onclick="goToSlide(7)"></div>
+        <div class="dot" onclick="goToSlide(8)"></div>
+        <div class="dot" onclick="goToSlide(9)"></div>
+        <div class="dot" onclick="goToSlide(10)"></div>
+        <div class="dot" onclick="goToSlide(11)"></div>
       </div>
       
       <div style="display: flex; gap: 8px; margin-left: 16px;">

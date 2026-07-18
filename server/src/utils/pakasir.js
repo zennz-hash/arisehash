@@ -112,6 +112,38 @@ export function buildPakasirPaymentUrl({ slug, amount, orderId, redirectUrl }) {
   return url
 }
 
+/**
+ * Verifies optional shared secret for Pakasir webhooks.
+ * If PAKASIR_WEBHOOK_SECRET is unset, returns true (rely on API re-verify only).
+ * Accepts secret from header `x-pakasir-secret`, `x-webhook-secret`, query `secret`, or body `secret`/`webhook_secret`.
+ */
+export function verifyPakasirWebhookSecret(req) {
+  const expected = process.env.PAKASIR_WEBHOOK_SECRET
+  if (!expected) return { ok: true, enforced: false }
+
+  const headerSecret =
+    req.headers?.['x-pakasir-secret'] ||
+    req.headers?.['x-webhook-secret'] ||
+    req.headers?.['x-arisehash-webhook-secret']
+  const querySecret = req.query?.secret || req.query?.webhook_secret
+  const bodySecret = req.body?.secret || req.body?.webhook_secret
+  const provided = String(headerSecret || querySecret || bodySecret || '').trim()
+
+  if (!provided || provided !== expected) {
+    return { ok: false, enforced: true }
+  }
+  return { ok: true, enforced: true }
+}
+
+/**
+ * Ensures amount matches the plan defined for the order (prevents underpay activation).
+ */
+export function amountMatchesPlan(planType, amount) {
+  const plan = PAKASIR_PLANS[planType]
+  if (!plan) return false
+  return Number(amount) === Number(plan.amount)
+}
+
 export function getPakasirStatusInfo(responseJson) {
   const data = responseJson?.data ?? responseJson
   const candidates = [

@@ -4,12 +4,12 @@ import { prisma } from '../db.js'
 import { requireAuth } from '../auth.js'
 import { claimQuota, refundQuota, calculateCreditCost, tryClaimQuota } from '../utils/quota.js'
 import { streamCompletion } from '../utils/ai.js'
-import { defaultFilesFor, promptHintFor, isValidTemplate } from '../utils/stacks.js'
+import { defaultFilesFor, promptHintFor, isValidTemplate, normalizeFilesForSandbox } from '../utils/stacks.js'
 import { resolveUserAiKey } from './aiKeys.js'
 import { validateGeneratedFiles } from '../utils/outputValidation.js'
 import { validate, validateParams } from '../middleware/validate.js'
 import { createRateLimit } from '../middleware/rateLimit.js'
-import { setSSEHeaders, MAX_AI_RESPONSE_LENGTH } from '../utils/stream.js'
+import { setSSEHeaders, startSSEHeartbeat, MAX_AI_RESPONSE_LENGTH } from '../utils/stream.js'
 import { parsePagination, paginatedResponse } from '../utils/pagination.js'
 import { logError } from '../utils/logger.js'
 import {
@@ -448,13 +448,18 @@ router.post('/:id/stream', requireAuth, validateParams(), codeStreamLimiter, val
     if (!clientConnected || res.destroyed) return false
     try { res.write(data); return true } catch { return false }
   }
+  const stopHeartbeat = startSSEHeartbeat(res, () => clientConnected)
+  const endStream = () => {
+    stopHeartbeat()
+    if (!res.destroyed) res.end()
+  }
 
   try {
     const project = await findAccessibleProject(id, req.user.id, { edit: true })
     if (!project) {
       if (quotaClaimed) await refundQuota(req.user.id, 'code', creditCost)
       safeWrite(`data: ${JSON.stringify({ error: 'Project tidak ditemukan' })}\n\n`)
-      if (!res.destroyed) res.end()
+      endStream()
       return
     }
 
@@ -464,7 +469,7 @@ router.post('/:id/stream', requireAuth, validateParams(), codeStreamLimiter, val
     } catch {
       if (quotaClaimed) await refundQuota(req.user.id, 'code', creditCost)
       safeWrite(`data: ${JSON.stringify({ error: 'Data proyek rusak (filesJson tidak valid).' }) }\n\n`)
-      if (!res.destroyed) res.end()
+      endStream()
       return
     }
     const template = project.template || 'react'
@@ -591,18 +596,53 @@ Aturan Penting:
 
     // Fallback: some models ignore the <vcFile> format and emit fenced code
     // blocks that declare a path in the info string, e.g. ```jsx /App.js.
-    // Only triggers when the primary parse found nothing (safe — needs a path).
-    if (filesUpdatedCount === 0) {
+    // Always run this in addition to <vcFile> parsing to catch mixed output.
+    {
       const fenceRe = /```[a-zA-Z0-9+#-]*[ \t]+((?:\.\/|\/)[^\s`]+)\n([\s\S]*?)```/g
       let fm
       while ((fm = fenceRe.exec(accumulatedContent)) !== null) {
         const p = safeProjectPath(fm[1].replace(/^\.\//, '/'))
         if (!p) continue
+        // Don't overwrite a file already set by the primary <vcFile> parser
+        if (Object.prototype.hasOwnProperty.call(updatedFiles, p)) continue
         updatedFiles[p] = fm[2].trim()
         filesUpdatedCount++
         if (!updatedPaths.includes(p)) updatedPaths.push(p)
       }
     }
+
+    // Third fallback: try to find ANY fenced code block without a path in info
+    // string and guess the file path from context (e.g. ```jsx without path).
+    // Only apply if we still have no files — this is a last-resort heuristic.
+    if (filesUpdatedCount === 0) {
+      const bareFenceRe = /```[a-zA-Z0-9+#-]*\n([\s\S]*?)```/g
+      let bm
+      while ((bm = bareFenceRe.exec(accumulatedContent)) !== null) {
+        const code = bm[1].trim()
+        if (!code) continue
+        // Heuristic: detect export default → it's likely a React component
+        const guessedPath = code.includes('export default') || code.includes('createApp')
+          ? '/App.js'
+          : code.includes('<template>') || code.includes('<script setup')
+            ? '/src/App.vue'
+            : code.includes('<script') && !code.includes('setup')
+              ? '/App.svelte'
+              : code.includes('document.getElementById') || code.includes('document.querySelector')
+                ? '/index.js'
+                : null
+        if (guessedPath && !Object.prototype.hasOwnProperty.call(updatedFiles, guessedPath)) {
+          updatedFiles[guessedPath] = code
+          filesUpdatedCount++
+          if (!updatedPaths.includes(guessedPath)) updatedPaths.push(guessedPath)
+          break // Only take the first bare fenced block
+        }
+      }
+    }
+
+    const normalized = normalizeFilesForSandbox(updatedFiles, template, updatedPaths)
+    const finalFiles = normalized.files
+    updatedPaths.splice(0, updatedPaths.length, ...normalized.updatedPaths)
+    filesUpdatedCount = updatedPaths.length
 
     // Save changes to database if files were updated
     if (filesUpdatedCount > 0) {
@@ -621,7 +661,7 @@ Aturan Penting:
       const updateResult = await prisma.codeProject.updateMany({
         where: { id, userId: req.user.id },
         data: {
-          filesJson: JSON.stringify(updatedFiles)
+          filesJson: JSON.stringify(finalFiles)
         }
       })
       // If update failed due to ownership change, silently ignore — user would not own project anyway
@@ -631,13 +671,13 @@ Aturan Penting:
       await refundQuota(req.user.id, 'code', creditCost)
     }
 
-    safeWrite(`data: ${JSON.stringify({ done: true, filesUpdated: filesUpdatedCount, updatedPaths, validationWarnings: validateGeneratedFiles(updatedFiles) })}\n\n`)
-    if (!res.destroyed) res.end()
+    safeWrite(`data: ${JSON.stringify({ done: true, filesUpdated: filesUpdatedCount, updatedPaths, validationWarnings: validateGeneratedFiles(finalFiles, template) })}\n\n`)
+    endStream()
   } catch (err) {
     logError('Stream Code', 'Failed', err)
     if (quotaClaimed) await refundQuota(req.user.id, 'code', creditCost)
     safeWrite(`data: ${JSON.stringify({ error: err.message })}\n\n`)
-    if (!res.destroyed) res.end()
+    endStream()
   }
 })
 

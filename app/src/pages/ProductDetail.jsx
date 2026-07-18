@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import {
   ArrowLeft, Save, Loader2, Terminal as TerminalIcon, Send, AlertTriangle,
@@ -16,6 +16,7 @@ import { useWorkspace } from '../context/WorkspaceContext.jsx'
 import { buildZip, downloadBlob } from '../utils/zip.js'
 import { API_BASE } from '../config.js'
 import { readSSEStream, SSEError } from '../utils/sse.js'
+import { buildSandpackSetup } from '../utils/sandpackSetup.js'
 import FullscreenLoader from '../components/FullscreenLoader.jsx'
 import { readAttachment } from '../utils/attachments.js'
 
@@ -28,16 +29,6 @@ import {
   useSandpack,
   useSandpackNavigation
 } from '@codesandbox/sandpack-react'
-
-// Safely read dependencies from a (possibly AI-mangled) package.json string.
-// Returns {} on any parse failure instead of throwing during render.
-function safeParseDeps(pkgJson) {
-  try {
-    return JSON.parse(pkgJson || '{}').dependencies || {}
-  } catch {
-    return {}
-  }
-}
 
 function safeProjectPath(raw) {
   if (!raw) return null
@@ -197,11 +188,20 @@ export default function ProductDetail() {
     }
   }
 
+  // Mount ref to prevent stale cache updates after unmount
+  const mountedRef = useRef(true)
+  const cacheTimerRef = useRef(null)
+
+  useEffect(() => {
+    mountedRef.current = true
+    return () => { mountedRef.current = false }
+  }, [])
+
   // Handle id mounting / page changes
   useEffect(() => {
     if (!id || !user) return
     const cachedItem = getCache(id)
-    if (cachedItem) {
+    if (cachedItem && mountedRef.current) {
       setProject(cachedItem.project || null)
       setFiles(cachedItem.files || {})
       setMessages(cachedItem.messages || [])
@@ -211,7 +211,7 @@ export default function ProductDetail() {
       setLoading(false)
       // Load silently in background to keep fresh
       loadWorkspace(true)
-    } else {
+    } else if (mountedRef.current) {
       // Clean states & load fresh
       setProject(null)
       setFiles({})
@@ -223,17 +223,23 @@ export default function ProductDetail() {
     }
   }, [id, user])
 
-  // Central cache sync useEffect
+  // Central cache sync useEffect — debounced to avoid writing on every render
   useEffect(() => {
     if (!id || !loaded) return
-    setCacheItem(id, {
-      project,
-      files,
-      messages,
-      activeFile,
-      quota,
-      loaded
-    })
+    if (cacheTimerRef.current) clearTimeout(cacheTimerRef.current)
+    cacheTimerRef.current = setTimeout(() => {
+      if (mountedRef.current) {
+        setCacheItem(id, {
+          project,
+          files,
+          messages,
+          activeFile,
+          quota,
+          loaded
+        })
+      }
+    }, 500)
+    return () => { if (cacheTimerRef.current) clearTimeout(cacheTimerRef.current) }
   }, [id, project, files, messages, activeFile, quota, loaded])
 
   useEffect(() => {
@@ -306,18 +312,28 @@ export default function ProductDetail() {
       let fullCodeStream = ''
       const filesBeforeStream = { ...filesRef.current }
       let switchedToCode = false
+      // Track last parse position to avoid re-parsing the entire stream on every chunk
+      let lastParseEnd = 0
+      const vcFileRe = /<vcFile\s+path="([^"]+)">([\s\S]*?)(?:<\/vcFile>|$)/g
 
       await readSSEStream(response, {
         onChunk: (chunk) => {
           fullCodeStream += chunk
-          // Parse <vcFile> blocks from accumulated text for live preview
+          // Parse only NEW content since last parse by advancing the regex lastIndex
           const next = { ...filesRef.current }
           let lastPath = null
-          const re = /<vcFile\s+path="([^"]+)">([\s\S]*?)(?:<\/vcFile>|$)/g
+          // Reset regex to end of last complete parse, but go back a bit in case
+          // a <vcFile block spans the boundary
+          const searchFrom = Math.max(0, lastParseEnd - 200)
+          vcFileRe.lastIndex = searchFrom
           let m
-          while ((m = re.exec(fullCodeStream)) !== null) {
+          while ((m = vcFileRe.exec(fullCodeStream)) !== null) {
             const safePath = safeProjectPath(m[1])
-            if (safePath) { next[safePath] = m[2]; lastPath = safePath }
+            if (safePath) {
+              next[safePath] = m[2]
+              lastPath = safePath
+              lastParseEnd = m.index + m[0].length
+            }
           }
           if (lastPath) {
             setFiles(next)
@@ -403,12 +419,14 @@ export default function ProductDetail() {
       // Cap consecutive auto-fix attempts so a model that can't fix the error
       // doesn't loop forever, draining quota/tokens. Manual edits reset it.
       if (autoFixAttemptsRef.current >= MAX_AUTO_FIX_ATTEMPTS) {
-        addToast('Perbaikan otomatis dihentikan setelah beberapa percobaan. Silakan perbaiki manual atau kirim instruksi baru.', 'error')
+        addToast('Perbaikan otomatis dihentikan setelah 3 percobaan. Edit kode secara manual atau kirim instruksi baru untuk memperbaiki.', 'error')
+        // Switch to code tab so user can see & edit the error directly
+        setRightTab('code')
         return
       }
       autoFixAttemptsRef.current += 1
-      executeInstruction(`Terjadi error kompilasi/runtime:\n"${errorMessage}"\nPerbaiki berkas yang bermasalah agar aplikasi berjalan lancar.`, true)
-    }, 3000)
+      executeInstruction(`Ada error kompilasi atau runtime pada aplikasi:\n"${errorMessage}"\nPerbaiki kode yang bermasalah agar aplikasi berjalan dengan benar. Periksa syntax, import yang hilang, dan logika komponen.`, true)
+    }, 2000)
   }, [autoCorrecting, loading, executeInstruction, addToast])
 
   useEffect(() => () => {
@@ -576,6 +594,12 @@ export default function ProductDetail() {
     } catch (err) { addToast(err.message, 'error') }
   }, [id, files, addToast])
 
+  const busy = loading || autoCorrecting
+  const sandbox = useMemo(
+    () => buildSandpackSetup(project?.template, files, activeFile, id),
+    [project?.template, files, activeFile, id]
+  )
+
   if (!project || Object.keys(files).length === 0) {
     if (!loaded) {
       return <FullscreenLoader />
@@ -591,8 +615,6 @@ export default function ProductDetail() {
       </div>
     )
   }
-
-  const busy = loading || autoCorrecting
 
   return (
     <div className="ide-shell">
@@ -725,12 +747,20 @@ export default function ProductDetail() {
       </div>
 
       <SandpackProvider
+        key={sandbox.providerKey}
         className="ide-provider"
         files={files}
-        template={project.template || 'react'}
+        template={sandbox.template}
         theme={theme === 'dark' ? 'dark' : 'light'}
-        customSetup={{ dependencies: safeParseDeps(files['/package.json']) }}
-        options={{ activeFile: activeFile, visibleFiles: Object.keys(files) }}
+        customSetup={sandbox.customSetup}
+        options={{
+          activeFile: sandbox.activeFile,
+          visibleFiles: sandbox.visibleFiles,
+          autorun: true,
+          autoReload: true,
+          recompileMode: 'delayed',
+          recompileDelay: 300
+        }}
       >
         <div className={`ide-body mobile-${mobileView}`}>
           {/* Left: chat */}

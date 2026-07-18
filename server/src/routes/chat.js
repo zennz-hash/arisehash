@@ -8,7 +8,7 @@ import { resolveUserAiKey } from './aiKeys.js'
 import { validate, validateParams, ID_RE } from '../middleware/validate.js'
 import { createChatSchema, updateChatSchema, sendMessageSchema, analyzeGithubSchema, updateMessageSchema } from '../schemas/chat.schema.js'
 import { createRateLimit } from '../middleware/rateLimit.js'
-import { setSSEHeaders, MAX_AI_RESPONSE_LENGTH } from '../utils/stream.js'
+import { setSSEHeaders, startSSEHeartbeat, MAX_AI_RESPONSE_LENGTH } from '../utils/stream.js'
 import { logError } from '../utils/logger.js'
 import { parsePagination, paginatedResponse } from '../utils/pagination.js'
 
@@ -327,6 +327,11 @@ router.post('/:id/message', requireAuth, chatMessageLimiter, validateParams(), v
     if (!clientConnected || res.destroyed) return false
     try { res.write(data); return true } catch { return false }
   }
+  const stopHeartbeat = startSSEHeartbeat(res, () => clientConnected)
+  const endStream = () => {
+    stopHeartbeat()
+    if (!res.destroyed) res.end()
+  }
 
   // Inform the client which model/message ids are in play.
   safeWrite(`data: ${JSON.stringify({ meta: true, model, userMessageId: userMessage.id })}\n\n`)
@@ -348,7 +353,7 @@ router.post('/:id/message', requireAuth, chatMessageLimiter, validateParams(), v
       // Client sudah pergi, refund quota & bersihkan user message.
       if (quotaClaimed) await refundQuota(req.user.id, 'code', creditCost)
       await prisma.chatMessage.delete({ where: { id: userMessage.id } }).catch(() => {})
-      if (!res.destroyed) res.end()
+      endStream()
       return
     }
 
@@ -370,19 +375,19 @@ router.post('/:id/message', requireAuth, chatMessageLimiter, validateParams(), v
     })
     if (updateResult.count === 0) {
       safeWrite(`data: ${JSON.stringify({ error: 'Percakapan tidak ditemukan' })}\n\n`)
-      if (!res.destroyed) res.end()
+      endStream()
       return
     }
 
     safeWrite(`data: ${JSON.stringify({ done: true, assistantMessageId: assistantMessage.id })}\n\n`)
-    if (!res.destroyed) res.end()
+    endStream()
   } catch (err) {
     logError('Chat Stream', 'failed', err)
     if (quotaClaimed) await refundQuota(req.user.id, 'code', creditCost)
     // Jangan hapus user message — frontend sudah terima meta event.
     // Partial content tidak dipersist untuk hindari duplikasi.
     safeWrite(`data: ${JSON.stringify({ error: err.message })}\n\n`)
-    if (!res.destroyed) res.end()
+    endStream()
   }
 })
 

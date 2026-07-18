@@ -102,7 +102,7 @@ test('tryClaimQuota bypasses when customCfg is truthy (BYOK)', async () => {
   const res = mockRes()
   const result = await tryClaimQuota(req, res, 'code', 1, {})
 
-  assert.deepEqual(result, { quotaClaimed: false })
+  assert.deepEqual(result, { allowed: true, quotaClaimed: false })
   // BYOK bypass is silent — no response sent
   assert.equal(res.statusCode, null)
   assert.equal(res.body, null)
@@ -113,12 +113,12 @@ test('tryClaimQuota bypasses with any truthy customCfg', async () => {
   const res = mockRes()
 
   const r1 = await tryClaimQuota(req, res, 'code', 1, { apiKey: 'sk-xxx' })
-  assert.deepEqual(r1, { quotaClaimed: false })
+  assert.deepEqual(r1, { allowed: true, quotaClaimed: false })
   assert.equal(res.statusCode, null)
 
   const r2 = await tryClaimQuota(req, res, 'code', 1, [])
-  assert.deepEqual(r2, { quotaClaimed: false })
+  assert.deepEqual(r2, { allowed: true, quotaClaimed: false })
 
   const r3 = await tryClaimQuota(req, res, 'code', 1, true)
-  assert.deepEqual(r3, { quotaClaimed: false })
+  assert.deepEqual(r3, { allowed: true, quotaClaimed: false })
 })

@@ -9,7 +9,7 @@ import { validateBlueprintContent } from '../utils/outputValidation.js'
 import crypto from 'node:crypto'
 import { validate, validateParams } from '../middleware/validate.js'
 import { createRateLimit } from '../middleware/rateLimit.js'
-import { setSSEHeaders, MAX_AI_RESPONSE_LENGTH, safeSseError } from '../utils/stream.js'
+import { setSSEHeaders, startSSEHeartbeat, MAX_AI_RESPONSE_LENGTH, safeSseError } from '../utils/stream.js'
 import { parsePagination, paginatedResponse } from '../utils/pagination.js'
 import { logError } from '../utils/logger.js'
 import {
@@ -150,12 +150,18 @@ router.get('/:id', requireAuth, validateParams(), async (req, res, next) => {
 })
 
 // POST /api/blueprints/generate-questions - Generate adaptive quiz questions
-router.post('/generate-questions', requireAuth, validate(generateQuestionsSchema), async (req, res, next) => {
+router.post('/generate-questions', requireAuth, blueprintGenerateLimiter, validate(generateQuestionsSchema), async (req, res, next) => {
+  let quotaClaimed = false
   try {
     const { idea, template, model: bodyModel, aiKeyId } = req.body
     const model = bodyModel || null
 
     const customCfg = await resolveUserAiKey(req.user.id, aiKeyId)
+
+    // Cheap code-credit cost so FREE users keep their PRD quota for generate.
+    const claim = await tryClaimQuota(req, res, 'code', 1, customCfg)
+    if (!claim.allowed) return
+    quotaClaimed = claim.quotaClaimed
 
     const messages = [
       {
@@ -198,6 +204,7 @@ Tanggapi HANYA dengan JSON mentah tanpa markdown (tanpa blok \`\`\`json) berupa 
 
     res.json(questions)
   } catch (err) {
+    if (quotaClaimed) await refundQuota(req.user.id, 'code', 1)
     next(err)
   }
 })
@@ -211,8 +218,9 @@ router.post('/generate', requireAuth, blueprintGenerateLimiter, validate(generat
   const customCfg = await resolveUserAiKey(req.user.id, aiKeyId)
 
   // Enforce quota BEFORE any work (built-in models only; BYOK bypasses quota).
-  const { quotaClaimed } = await tryClaimQuota(req, res, 'prd', 1, customCfg)
-  if (!quotaClaimed) return
+  const claim = await tryClaimQuota(req, res, 'prd', 1, customCfg)
+  if (!claim.allowed) return
+  const quotaClaimed = claim.quotaClaimed
 
   // Set response headers for Server-Sent Events (SSE)
   setSSEHeaders(res)
@@ -266,6 +274,11 @@ Jawaban Kuis Tambahan: ${JSON.stringify(quizAnswers || [])}`
     if (!clientConnected || res.destroyed) return false
     try { res.write(data); return true } catch { return false }
   }
+  const stopHeartbeat = startSSEHeartbeat(res, () => clientConnected)
+  const endStream = () => {
+    stopHeartbeat()
+    if (!res.destroyed) res.end()
+  }
 
   let accumulatedContent = ''
   try {
@@ -281,7 +294,7 @@ Jawaban Kuis Tambahan: ${JSON.stringify(quizAnswers || [])}`
 
     if (!clientConnected) {
       if (quotaClaimed) await refundQuota(req.user.id, 'prd')
-      if (!res.destroyed) res.end()
+      endStream()
       return
     }
 
@@ -302,13 +315,13 @@ Jawaban Kuis Tambahan: ${JSON.stringify(quizAnswers || [])}`
 
     // Write final meta event containing the document id
     safeWrite(`data: ${JSON.stringify({ blueprintId: newBlueprint.id, done: true, validationWarnings: validateBlueprintContent(accumulatedContent) })}\n\n`)
-    if (!res.destroyed) res.end()
+    endStream()
   } catch (err) {
     logError('Generate PRD', 'Streaming failed', err)
     // Refund quota on failure (only if it was actually claimed)
     if (quotaClaimed) await refundQuota(req.user.id, 'prd')
     safeWrite(`data: ${JSON.stringify({ error: safeSseError(err) })}\n\n`)
-    if (!res.destroyed) res.end()
+    endStream()
   }
 })
 
@@ -399,6 +412,11 @@ Pertahankan struktur, bagian Mermaid (\`\`\`mermaid), dan skema yang masih relev
     if (!clientConnected || res.destroyed) return false
     try { res.write(data); return true } catch { return false }
   }
+  const stopHeartbeat = startSSEHeartbeat(res, () => clientConnected)
+  const endStream = () => {
+    stopHeartbeat()
+    if (!res.destroyed) res.end()
+  }
 
   let accumulated = ''
   try {
@@ -413,7 +431,7 @@ Pertahankan struktur, bagian Mermaid (\`\`\`mermaid), dan skema yang masih relev
 
     if (!clientConnected) {
       if (quotaClaimed) await refundQuota(req.user.id, 'prd')
-      if (!res.destroyed) res.end()
+      endStream()
       return
     }
 
@@ -424,7 +442,7 @@ Pertahankan struktur, bagian Mermaid (\`\`\`mermaid), dan skema yang masih relev
     })
     if (updateResult.count === 0) {
       safeWrite(`data: ${JSON.stringify({ error: 'Blueprint tidak ditemukan' })}\n\n`)
-      if (!res.destroyed) res.end()
+      endStream()
       return
     }
 
@@ -432,12 +450,12 @@ Pertahankan struktur, bagian Mermaid (\`\`\`mermaid), dan skema yang masih relev
     await createBlueprintVersion(id, req.user.id, 'Revisi AI', accumulated, 'AI_REVISE')
 
     safeWrite(`data: ${JSON.stringify({ done: true, currentVersion: updated.currentVersion, validationWarnings: validateBlueprintContent(accumulated) })}\n\n`)
-    if (!res.destroyed) res.end()
+    endStream()
   } catch (err) {
     logError('Blueprint Revise', 'failed', err)
     if (quotaClaimed) await refundQuota(req.user.id, 'prd')
     safeWrite(`data: ${JSON.stringify({ error: safeSseError(err) })}\n\n`)
-    if (!res.destroyed) res.end()
+    endStream()
   }
 })
 

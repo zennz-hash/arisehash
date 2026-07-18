@@ -13,11 +13,37 @@ const IS_PROD = process.env.NODE_ENV === 'production' || !!process.env.VERCEL
  * @param {import('express').Response} res
  */
 export function setSSEHeaders(res) {
-  res.setHeader('Content-Type', 'text/event-stream')
+  res.setHeader('Content-Type', 'text/event-stream; charset=utf-8')
   res.setHeader('Cache-Control', 'no-cache, no-transform')
   res.setHeader('Connection', 'keep-alive')
   res.setHeader('X-Accel-Buffering', 'no')
   res.flushHeaders?.()
+  try {
+    res.write(': connected\n\n')
+  } catch {
+    // The route-level safe writer handles disconnects after initialization.
+  }
+}
+
+/**
+ * Sends lightweight SSE comments so deployment proxies do not buffer or close
+ * long-running AI streams while the upstream model is still thinking.
+ * @param {import('express').Response} res
+ * @param {() => boolean} isConnected
+ * @param {number} intervalMs
+ * @returns {() => void}
+ */
+export function startSSEHeartbeat(res, isConnected = () => true, intervalMs = 15_000) {
+  const id = setInterval(() => {
+    if (!isConnected() || res.destroyed) return
+    try {
+      res.write(': keepalive\n\n')
+    } catch {
+      clearInterval(id)
+    }
+  }, intervalMs)
+  id.unref?.()
+  return () => clearInterval(id)
 }
 
 /**

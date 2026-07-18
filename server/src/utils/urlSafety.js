@@ -1,7 +1,10 @@
 import net from 'node:net'
 import { lookup } from 'node:dns/promises'
 
-const BLOCKED_HOSTS = new Set(['localhost', '127.0.0.1', '0.0.0.0', '::1'])
+const BLOCKED_HOSTS = new Set(['localhost', '127.0.0.1', '0.0.0.0', '::1', 'metadata.google.internal', 'metadata'])
+
+/** Extra host suffixes that must never be used as AI base URLs. */
+const BLOCKED_SUFFIXES = ['.localhost', '.local', '.internal', '.intranet', '.corp', '.home', '.lan']
 
 export function isPrivateIPv4(host) {
   const parts = host.split('.').map((x) => Number(x))
@@ -12,7 +15,8 @@ export function isPrivateIPv4(host) {
     || (a === 192 && b === 168)
     || a === 127
     || a === 0
-    || (a === 169 && b === 254)
+    || (a === 169 && b === 254) // link-local / cloud metadata
+    || (a === 100 && b >= 64 && b <= 127) // CGNAT / some cloud internal
 }
 
 export function isPrivateIPv6(host) {
@@ -29,11 +33,21 @@ export function isPrivateIPv6(host) {
  * Verifies that the hostname does not resolve to a private IP address.
  * This mitigates DNS rebinding attacks. Checks BOTH IPv4 and IPv6 results —
  * an IPv6-only host pointing at a private address must not slip through.
+ * DNS failures are treated as unsafe in production (fail closed).
  */
-export async function validateResolvedIp(hostname) {
-  if (net.isIP(hostname)) return // already validated by normalizeAiBaseUrl
+export async function validateResolvedIp(hostname, { isProd = process.env.NODE_ENV === 'production' || !!process.env.VERCEL } = {}) {
+  if (net.isIP(hostname)) {
+    const v = net.isIP(hostname)
+    if (v === 4 && isPrivateIPv4(hostname)) throw new Error('Base URL tidak boleh memakai IP private.')
+    if (v === 6 && isPrivateIPv6(hostname)) throw new Error('Base URL tidak boleh memakai IP private.')
+    return
+  }
   try {
     const addresses = await lookup(hostname, { all: true })
+    if (!addresses.length) {
+      if (isProd) throw new Error('Base URL tidak dapat di-resolve (DNS kosong).')
+      return
+    }
     for (const { address, family } of addresses) {
       const isPrivate = family === 6 ? isPrivateIPv6(address) : isPrivateIPv4(address)
       if (isPrivate) {
@@ -41,8 +55,9 @@ export async function validateResolvedIp(hostname) {
       }
     }
   } catch (err) {
-    if (err.message.includes('IP private')) throw err
-    // DNS resolution failure is acceptable for some internal hosts; proceed with caution
+    if (err.message.includes('IP private') || err.message.includes('DNS kosong') || err.message.includes('tidak boleh')) throw err
+    if (isProd) throw new Error('Base URL tidak dapat di-resolve. Periksa hostname model.')
+    // Dev: DNS resolution failure is acceptable for some internal hosts
   }
 }
 
@@ -62,16 +77,21 @@ export function normalizeAiBaseUrl(raw, { isProd = process.env.NODE_ENV === 'pro
   }
 
   const hostname = parsed.hostname.toLowerCase()
-  if (BLOCKED_HOSTS.has(hostname) || hostname.endsWith('.localhost') || hostname.endsWith('.local')) {
+  if (BLOCKED_HOSTS.has(hostname) || BLOCKED_SUFFIXES.some((s) => hostname.endsWith(s))) {
     throw new Error('Base URL tidak boleh mengarah ke host lokal/private.')
   }
-
+  // Block numeric-looking weird hosts and bare IPs that are private
   const ipVersion = net.isIP(hostname)
   if (ipVersion === 4 && isPrivateIPv4(hostname)) {
     throw new Error('Base URL tidak boleh memakai IP private.')
   }
-  if (ipVersion === 6 && (hostname === '::1' || hostname.startsWith('fc') || hostname.startsWith('fd') || hostname.startsWith('fe80'))) {
+  if (ipVersion === 6 && isPrivateIPv6(hostname)) {
     throw new Error('Base URL tidak boleh memakai IP private.')
+  }
+
+  // Reject userinfo in URL (credential smuggling / SSRF tricks)
+  if (parsed.username || parsed.password) {
+    throw new Error('Base URL tidak boleh mengandung username/password.')
   }
 
   parsed.pathname = parsed.pathname.replace(/\/+$/, '')

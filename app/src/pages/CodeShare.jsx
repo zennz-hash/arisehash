@@ -4,14 +4,7 @@ import { Code2, Eye, AlertTriangle } from 'lucide-react'
 import { SandpackProvider, SandpackPreview, SandpackCodeEditor } from '@codesandbox/sandpack-react'
 import { api } from '../api.js'
 import { buildZip, downloadBlob } from '../utils/zip.js'
-
-function safeParseDeps(pkgText) {
-  try {
-    return JSON.parse(pkgText || '{}')?.dependencies || {}
-  } catch {
-    return {}
-  }
-}
+import { buildSandpackSetup } from '../utils/sandpackSetup.js'
 
 export default function CodeShare() {
   const { token } = useParams()
@@ -20,7 +13,10 @@ export default function CodeShare() {
   const [error, setError] = useState('')
   const [loaded, setLoaded] = useState(false)
   const [tab, setTab] = useState('preview')
-  const dependencies = useMemo(() => safeParseDeps(files['/package.json']), [files])
+  const sandbox = useMemo(
+    () => buildSandpackSetup(project?.template, files, undefined, `share:${token}`),
+    [project?.template, files, token]
+  )
 
   useEffect(() => {
     let active = true
@@ -73,11 +69,20 @@ export default function CodeShare() {
       </header>
 
       <SandpackProvider
+        key={sandbox.providerKey}
         className="ide-provider"
         files={files}
-        template={project.template || 'react'}
+        template={sandbox.template}
         theme="dark"
-        customSetup={{ dependencies }}
+        customSetup={sandbox.customSetup}
+        options={{
+          activeFile: sandbox.activeFile,
+          visibleFiles: sandbox.visibleFiles,
+          autorun: true,
+          autoReload: true,
+          recompileMode: 'delayed',
+          recompileDelay: 300
+        }}
       >
         <div className="ide-body" style={{ gridTemplateColumns: '1fr' }}>
           <section className="ide-right">

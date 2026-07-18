@@ -160,21 +160,23 @@ export async function claimQuota(userId, kind, amount = 1) {
 /**
  * Tries to claim quota for a user. If BYOK is active, quota is bypassed.
  * If quota is exhausted, sends a 429 response with error details via the provided
- * Express response object and returns `{ quotaClaimed: false }`.
+ * Express response object and returns `{ allowed: false }`.
  *
  * Usage in routes:
- *   const { quotaClaimed } = await tryClaimQuota(req, res, 'code', creditCost, customCfg)
- *   if (!quotaClaimed) return // response already sent
+ *   const { allowed, quotaClaimed } = await tryClaimQuota(req, res, 'code', creditCost, customCfg)
+ *   if (!allowed) return // response already sent (quota exhausted)
+ *   // quotaClaimed === true only when built-in model consumed quota (for refund on error)
  *
  * @param {import('express').Request} req
  * @param {import('express').Response} res
  * @param {string} kind - 'prd' or 'code'
  * @param {number} [amount=1] - credit cost
  * @param {Object|null} [customCfg=null] - BYOK config (null = use built-in models)
- * @returns {Promise<{quotaClaimed: boolean}>}
+ * @returns {Promise<{allowed: boolean, quotaClaimed: boolean}>}
  */
 export async function tryClaimQuota(req, res, kind, amount = 1, customCfg = null) {
-  if (customCfg) return { quotaClaimed: false }
+  // BYOK: skip platform quota, allow the request to proceed.
+  if (customCfg) return { allowed: true, quotaClaimed: false }
 
   const quotaResult = await claimQuota(req.user.id, kind, amount)
   if (!quotaResult.allowed) {
@@ -184,9 +186,9 @@ export async function tryClaimQuota(req, res, kind, amount = 1, customCfg = null
       limit: quotaResult.limit,
       planType: quotaResult.planType,
     })
-    return { quotaClaimed: false }
+    return { allowed: false, quotaClaimed: false }
   }
-  return { quotaClaimed: true }
+  return { allowed: true, quotaClaimed: true }
 }
 
 /**

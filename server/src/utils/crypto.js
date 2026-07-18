@@ -4,15 +4,31 @@ import { IS_PROD } from './config.js'
 /**
  * Symmetric encryption for user-supplied API keys (AES-256-GCM).
  *
- * The key is derived from env AI_KEY_SECRET (any string) via scrypt so the
- * stored ciphertext is useless without the server secret. Format stored in DB:
- *   <iv_hex>:<authTag_hex>:<cipher_hex>
+ * Priority for the key material (must differ from JWT_SECRET in production):
+ *   1. AI_KEY_SECRET
+ *   2. ENCRYPTION_KEY (legacy alias used in some env files)
+ *   3. JWT_SECRET (dev fallback only — rejected in production)
+ *
+ * Stored format: <iv_hex>:<authTag_hex>:<cipher_hex>
  */
-const SECRET = process.env.AI_KEY_SECRET || process.env.JWT_SECRET
-if (IS_PROD && !SECRET) {
-  throw new Error('AI_KEY_SECRET atau JWT_SECRET wajib diset di environment produksi untuk melindungi enkripsi.')
+function resolveSecret() {
+  const dedicated = process.env.AI_KEY_SECRET || process.env.ENCRYPTION_KEY
+  if (dedicated) return dedicated
+  if (IS_PROD) {
+    throw new Error(
+      'AI_KEY_SECRET (atau ENCRYPTION_KEY) wajib diset di produksi — jangan pakai JWT_SECRET untuk enkripsi API key.'
+    )
+  }
+  if (process.env.JWT_SECRET) {
+    console.warn(
+      '[crypto] AI_KEY_SECRET tidak diset; fallback ke JWT_SECRET (hanya development). Set AI_KEY_SECRET terpisah.'
+    )
+    return process.env.JWT_SECRET
+  }
+  return 'arisehash-dev-fallback-secret-change-me'
 }
-const ACTIVE_SECRET = SECRET || 'arisehash-dev-fallback-secret-change-me'
+
+const ACTIVE_SECRET = resolveSecret()
 const KEY = crypto.scryptSync(ACTIVE_SECRET, 'arisehash-aikey-salt', 32)
 
 export function encryptSecret(plain) {

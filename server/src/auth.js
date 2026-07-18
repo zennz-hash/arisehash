@@ -11,6 +11,9 @@ import { IS_PROD } from './utils/config.js'
 if (IS_PROD && !process.env.JWT_SECRET) {
   throw new Error('JWT_SECRET wajib diset di environment produksi.')
 }
+if (IS_PROD && process.env.JWT_SECRET && process.env.JWT_SECRET.length < 32) {
+  throw new Error('JWT_SECRET di produksi minimal 32 karakter.')
+}
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret'
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || ''
 const SESSION_COOKIE = 'arisehash_session'
@@ -103,33 +106,38 @@ export async function requireAuth(req, res, next) {
     if (!token) return res.status(401).json({ error: 'Tidak ada token' })
     const payload = jwt.verify(token, JWT_SECRET)
 
-    if (payload.sid) {
-      // Bersihkan sesi basi secara periodik (~10% request) untuk hindari full-scan tiap saat
-      if (Math.random() < 0.1) {
-        prisma.authSession.deleteMany({
-          where: { expiresAt: { lt: new Date() } }
-        }).catch((err) => logError('Auth', 'Gagal membersihkan sesi basi', err))
-      }
-
-      const session = await prisma.authSession.findFirst({
-        where: {
-          id: payload.sid,
-          userId: payload.uid,
-          revokedAt: null,
-          expiresAt: { gt: new Date() }
-        }
-      })
-      if (!session) return res.status(401).json({ error: 'Sesi tidak valid atau sudah berakhir' })
-
-      const unsafe = !['GET', 'HEAD', 'OPTIONS'].includes(req.method)
-      if (!bearerToken && unsafe) {
-        const csrfHeader = req.headers['x-csrf-token']
-        if (!payload.csrf || csrfHeader !== payload.csrf || cookies[CSRF_COOKIE] !== payload.csrf) {
-          return res.status(403).json({ error: 'Token CSRF tidak valid' })
-        }
-      }
-      req.session = session
+    // Wajibkan sid agar token bisa di-revoke lewat logout / logout-all.
+    // Token lama tanpa sid ditolak (login ulang).
+    if (!payload.sid || !payload.uid) {
+      return res.status(401).json({ error: 'Token tidak valid atau sudah kedaluwarsa' })
     }
+
+    // Bersihkan sesi basi secara periodik (~10% request) untuk hindari full-scan tiap saat
+    if (Math.random() < 0.1) {
+      prisma.authSession.deleteMany({
+        where: { expiresAt: { lt: new Date() } }
+      }).catch((err) => logError('Auth', 'Gagal membersihkan sesi basi', err))
+    }
+
+    const session = await prisma.authSession.findFirst({
+      where: {
+        id: payload.sid,
+        userId: payload.uid,
+        revokedAt: null,
+        expiresAt: { gt: new Date() }
+      }
+    })
+    if (!session) return res.status(401).json({ error: 'Sesi tidak valid atau sudah berakhir' })
+
+    const unsafe = !['GET', 'HEAD', 'OPTIONS'].includes(req.method)
+    // Cookie-based auth: wajib CSRF. Bearer (explicit) skip double-submit cookie.
+    if (!bearerToken && unsafe) {
+      const csrfHeader = req.headers['x-csrf-token']
+      if (!payload.csrf || csrfHeader !== payload.csrf || cookies[CSRF_COOKIE] !== payload.csrf) {
+        return res.status(403).json({ error: 'Token CSRF tidak valid' })
+      }
+    }
+    req.session = session
 
     const user = await prisma.user.findUnique({ where: { id: payload.uid } })
     if (!user) return res.status(401).json({ error: 'User tidak ditemukan' })

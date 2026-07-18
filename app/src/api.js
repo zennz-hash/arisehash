@@ -18,7 +18,7 @@ export const authHeaders = (method = 'GET') => {
   return headers
 }
 
-async function req(path, { method = 'GET', body, form, auth = true } = {}) {
+async function req(path, { method = 'GET', body, form, auth = true, signal } = {}) {
   const headers = auth ? authHeaders(method) : {}
   let payload
   if (form) {
@@ -29,8 +29,9 @@ async function req(path, { method = 'GET', body, form, auth = true } = {}) {
   }
   let res
   try {
-    res = await fetch(`${API_BASE}${path}`, { method, headers, body: payload, credentials: 'include' })
-  } catch {
+    res = await fetch(`${API_BASE}${path}`, { method, headers, body: payload, credentials: 'include', signal })
+  } catch (err) {
+    if (err?.name === 'AbortError') throw err
     throw new Error('Tidak bisa terhubung ke server. Pastikan backend berjalan (npm run dev).')
   }
   const data = await res.json().catch(() => ({}))
@@ -69,7 +70,7 @@ export const api = {
   getBlueprint: (id) => req(`/api/blueprints/${id}`),
   updateBlueprint: (id, content, name) => req(`/api/blueprints/${id}`, { method: 'PUT', body: { content, name } }),
   updateBlueprintMeta: (id, { folder, tags, name } = {}) => req(`/api/blueprints/${id}`, { method: 'PUT', body: { folder, tags, name } }),
-  generateQuestions: (idea, template, model, aiKeyId) => req('/api/blueprints/generate-questions', { method: 'POST', body: { idea, template, model, aiKeyId } }),
+  generateQuestions: (idea, template, model, aiKeyId, opts = {}) => req('/api/blueprints/generate-questions', { method: 'POST', body: { idea, template, model, aiKeyId }, signal: opts.signal }),
   restoreVersion: (id, versionNumber) => req(`/api/blueprints/${id}/restore`, { method: 'POST', body: { versionNumber } }),
   createVersionSnapshot: (id, name) => req(`/api/blueprints/${id}/version`, { method: 'POST', body: { name } }),
   toggleShare: (id, isPublic) => req(`/api/blueprints/${id}/share`, { method: 'POST', body: { isPublic } }),

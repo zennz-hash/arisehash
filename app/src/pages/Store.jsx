@@ -35,6 +35,43 @@ import {
   SUGGESTIONS_STORE,
 } from '../constants.js'
 
+const QUESTION_REQUEST_TIMEOUT_MS = 12_000
+
+const FALLBACK_PRD_QUESTIONS = [
+  {
+    id: 1,
+    question: 'Apa prioritas utama produk ini?',
+    options: ['MVP cepat divalidasi', 'Fitur lengkap sejak awal', 'Skalabilitas enterprise', 'Desain premium']
+  },
+  {
+    id: 2,
+    question: 'Siapa pengguna utama yang ditargetkan?',
+    options: ['Pengguna umum', 'Tim operasional bisnis', 'Admin internal', 'Developer atau kreator']
+  },
+  {
+    id: 3,
+    question: 'Data apa yang paling penting dikelola?',
+    options: ['Profil dan akun pengguna', 'Transaksi dan pembayaran', 'Konten atau dokumen', 'Analitik dan laporan']
+  },
+  {
+    id: 4,
+    question: 'Integrasi apa yang paling dibutuhkan?',
+    options: ['Login sosial', 'Pembayaran', 'Email atau notifikasi', 'API pihak ketiga']
+  },
+  {
+    id: 5,
+    question: 'Target deployment awalnya di mana?',
+    options: ['Vercel atau Netlify', 'VPS atau Docker', 'Cloud managed service', 'Belum ditentukan']
+  }
+]
+
+function normalizePrdQuestions(questions) {
+  return (Array.isArray(questions) ? questions : [])
+    .filter((q) => q && q.question && Array.isArray(q.options) && q.options.length)
+    .slice(0, 5)
+    .map((q, i) => ({ id: i + 1, question: String(q.question), options: q.options.map(String).slice(0, 4) }))
+}
+
 const Markdown = memo(function Markdown({ content }) {
   const blocks = useMemo(() => {
     const out = []
@@ -384,10 +421,28 @@ export default function Store() {
         })
       }
 
-      const qs = await api.generateQuestions(promptWithContext, template, m, k)
-      const list = (Array.isArray(qs) ? qs : []).slice(0, 5)
+      const controller = new AbortController()
+      let timedOut = false
+      const timeoutId = setTimeout(() => {
+        timedOut = true
+        controller.abort()
+      }, QUESTION_REQUEST_TIMEOUT_MS)
+
+      let qs
+      try {
+        qs = await api.generateQuestions(promptWithContext, template, m, k, { signal: controller.signal })
+      } catch (err) {
+        if (!timedOut) throw err
+        addToast('Pertanyaan AI lambat di server deploy, memakai pertanyaan dasar agar proses lanjut.', 'info')
+        qs = FALLBACK_PRD_QUESTIONS
+      } finally {
+        clearTimeout(timeoutId)
+      }
+
+      let list = normalizePrdQuestions(qs)
       if (list.length === 0) {
-        throw new Error('AI tidak mengembalikan pertanyaan. Coba lagi.')
+        addToast('Pertanyaan AI kosong, memakai pertanyaan dasar.', 'info')
+        list = normalizePrdQuestions(FALLBACK_PRD_QUESTIONS)
       }
       const init = {}
       list.forEach((q) => { init[q.id] = q.options?.[0] })
